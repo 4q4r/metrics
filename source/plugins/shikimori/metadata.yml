@@ -121,13 +121,14 @@ inputs:
 
   plugin_shikimori_title_language:
     description: |
-      Title language used for medias names
+      Title language used for medias and achievement names
 
       - `english`
       - `russian`
       - `japanese`
 
       Falls back to the default name when no title is available in the selected language
+      Achievements use English titles unless Russian is selected, falling back to their identifier
     type: string
     default: english
     values:
@@ -190,6 +191,26 @@ inputs:
       Can be used to create varied outputs
     type: boolean
     default: yes
+
+  plugin_shikimori_display_characters:
+    description: |
+      Displayed fields on characters strip (requires `characters` section)
+    type: array
+    format: comma-separated
+    default: name, artwork
+    values:
+      - name
+      - artwork
+
+  plugin_shikimori_display_people:
+    description: |
+      Displayed fields on people strips (requires `people` section)
+    type: array
+    format: comma-separated
+    default: name, artwork
+    values:
+      - name
+      - artwork
 
   plugin_shikimori_display_favorites:
     description: |

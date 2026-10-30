@@ -1,3 +1,6 @@
+//Imports
+import fs from "fs"
+
 //Setup
 export default async function({login, data, queries, imports, q, account}, {enabled = false, extras = false} = {}) {
   //Plugin execution
@@ -7,7 +10,7 @@ export default async function({login, data, queries, imports, q, account}, {enab
       return null
 
     //Load inputs
-    const {user, medias, sections, statuses, people, sort, "title.language":title_language, score:score_display, limit, "limit.characters":limit_characters, "limit.people":limit_people, shuffle} = imports.metadata.plugins.shikimori.inputs({data, account, q})
+    const {user, medias, sections, statuses, people, sort, "title.language":title_language, score:score_display, limit, "limit.characters":limit_characters, "limit.people":limit_people, shuffle, "display.stats":display_stats, "achievements.filter":achievements_filter, "limit.achievements":limit_achievements, "display.achievements":display_achievements, "display.favorites":display_favorites, "display.lists":display_lists} = imports.metadata.plugins.shikimori.inputs({data, account, q})
 
     //Initialization
     const result = {user:null, sections, lists:Object.fromEntries(medias.map(media => [media, {}])), favorites:Object.fromEntries(medias.map(media => [media, []])), characters:[], people:{}, stats:{}, achievements:[], genres:[]}
@@ -52,7 +55,7 @@ export default async function({login, data, queries, imports, q, account}, {enab
           for (const media of displayed) {
             //Format and save results
             const list = partition(media, rates).map(rate => format({media, entity:targetType === "Anime" ? rate.anime : rate.manga, rate, title_language}))
-            result.lists[media][status] = await encode({list:mask({list:ordering({list, sort, shuffle, limit, imports}), score_display}), imports})
+            result.lists[media][status] = await encode({list:mask({list:ordering({list, sort, shuffle, limit, imports}), score_display}), imports, cover:display_lists.includes("cover")})
           }
         }
       }
@@ -98,7 +101,7 @@ export default async function({login, data, queries, imports, q, account}, {enab
         //Format and save results, preserving the favorites response order
         const medias_data = new Map(Object.values(resolved).flat().map(entity => [`${entity.id}`, entity]))
         const list = entries.map(({id, image}) => format({media, id, image, entity:medias_data.get(`${id}`), rate:null, title_language}))
-        result.favorites[media] = await encode({list:mask({list:ordering({list, sort, shuffle, limit, imports}), score_display}), imports})
+        result.favorites[media] = await encode({list:mask({list:ordering({list, sort, shuffle, limit, imports}), score_display}), imports, cover:display_favorites.includes("cover")})
       }
     }
 
@@ -112,6 +115,54 @@ export default async function({login, data, queries, imports, q, account}, {enab
         result.people[kind] = await strips({entries:favorites[kind], imports, shuffle:sort === "site" && shuffle, limit:limit_people})
     }
 
+    //Profile statistics (v1 API, shared by stats and genres sections)
+    if ((sections.includes("stats")) || (sections.includes("genres"))) {
+      console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (profile statistics)`)
+      const profile = await request({login, imports, url:`https://shikimori.io/api/users/${result.user.id}`})
+      if ((!profile?.stats) || (typeof profile.stats !== "object") || (Array.isArray(profile.stats)))
+        throw failure("Invalid Shikimori profile statistics response")
+      const {stats} = profile
+      if (sections.includes("stats")) {
+        if (![stats.full_statuses?.anime, stats.full_statuses?.manga, stats.scores?.anime, stats.scores?.manga, stats.activity].every(Array.isArray))
+          throw failure("Invalid Shikimori profile statistics response")
+        //Full statuses retain rewatching; size is a title count, summed by name rather than array position.
+        const counts = new Map()
+        for (const {name, size} of [...stats.full_statuses.anime, ...stats.full_statuses.manga]) {
+          if ((typeof name !== "string") || (!Number.isFinite(size)))
+            throw failure("Invalid Shikimori status statistics response")
+          counts.set(name, (counts.get(name) ?? 0) + size)
+        }
+        result.stats = {
+          summary:display_stats.includes("summary") ? await summarize({login, imports, queries, userId:result.user.id}) : null,
+          statuses:[...counts].map(([name, value]) => ({name, value})),
+          scores:stats.scores,
+          activity:stats.activity.map(({name:[from, to], value}) => ({from, to, value})),
+        }
+      }
+      if (sections.includes("genres"))
+        result.genres = [...(stats.genres ?? [])].sort((a, b) => b.value - a.value).slice(0, 8).map(({name}) => name)
+    }
+
+    //Achievements (v1 API; image-less responses use exact per-level metadata from the MIT rules source)
+    if (sections.includes("achievements")) {
+      console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (achievements)`)
+      const entries = await request({login, imports, url:`https://shikimori.io/api/achievements?user_id=${result.user.id}`})
+      if ((!Array.isArray(entries)) || (!entries.every(entry => (typeof entry?.neko_id === "string") && (Number.isInteger(entry.level)) && (Number.isFinite(entry.progress)))))
+        throw failure("Invalid Shikimori achievements response")
+      const selected = entries.filter(({level}) => achievements_filter === "all" || level >= 1).sort((a, b) => b.level - a.level || b.progress - a.progress)
+      if (limit_achievements > 0)
+        selected.splice(limit_achievements)
+      //Extracted from shikimori/neko-achievements@848daf99ba7c9663d48077e81cf3d1efbb568aa9; see neko-achievements.LICENSE.
+      const titles = JSON.parse(fs.readFileSync(new URL("./neko-titles.json", import.meta.url), "utf8"))
+      const icons = display_achievements.includes("icons") ? JSON.parse(fs.readFileSync(new URL("./neko-icons.json", import.meta.url), "utf8")) : null
+      const language = title_language === "russian" ? "title_ru" : "title_en"
+      result.achievements = await Promise.all(selected.map(async ({neko_id, level, progress}) => ({
+        neko_id, level, progress,
+        name:titles[neko_id]?.[String(level)]?.[language] || neko_id,
+        icon:await achievementIcon({path:icons?.[neko_id]?.[String(level)], imports}),
+      })))
+    }
+
     //Results
     return result
   }
@@ -119,6 +170,48 @@ export default async function({login, data, queries, imports, q, account}, {enab
   catch (error) {
     throw imports.format.error(error)
   }
+}
+
+/**An unknown icon or failed download retains the achievement's chip data */
+async function achievementIcon({path, imports}) {
+  if (!path)
+    return null
+  try {
+    return await imports.imgb64(imageUrl(path), {fallback:false})
+  }
+  catch (error) {
+    console.debug(`metrics/imgb64 > shikimori > achievement icon failed for ${path}: ${error}`)
+    return null
+  }
+}
+
+/**Sum all rate counters independently of card media, status, sort and display limits */
+async function summarize({login, imports, queries, userId}) {
+  const summary = {episodes:0, chapters:0}
+  const query = queries.shikimori.summary()
+  const max_pages = 100
+  for (const targetType of ["Anime", "Manga"]) {
+    const field = targetType === "Anime" ? "episodes" : "chapters"
+    for (let page = 1; page <= max_pages; page++) {
+      console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (summary ${targetType} - page ${page})`)
+      //Status is optional: one sweep per target covers every status, including Manga-kind ranobe rates.
+      const variables = {page, limit:50, userId, targetType, order:{field:"id", order:"asc"}}
+      const response = await request({login, imports, url:"https://shikimori.io/api/graphql", body:{query, variables}})
+      const entries = response?.data?.userRates
+      if (!Array.isArray(entries))
+        throw failure(`Invalid Shikimori ${targetType} summary response`)
+      for (const rate of entries) {
+        if (!Number.isFinite(rate?.[field]))
+          throw failure(`Invalid Shikimori ${targetType} summary count`)
+        summary[field] += rate[field]
+      }
+      if (entries.length < 50)
+        break
+      if (page === max_pages)
+        throw failure(`Shikimori summary exceeded ${max_pages} pages for ${targetType}`)
+    }
+  }
+  return summary
 }
 
 /**Media formatter (raw scores; the display mask is applied after ordering) */
@@ -150,9 +243,9 @@ function mask({list, score_display}) {
   }}))
 }
 
-/**Encode only the retained cards after sorting, shuffling and limiting */
-async function encode({list, imports}) {
-  return Promise.all(list.map(async card => ({...card, artwork:await imports.imgb64(card.artwork)})))
+/**Encode only retained cards with visible covers after sorting, shuffling and limiting */
+async function encode({list, imports, cover}) {
+  return Promise.all(list.map(async card => ({...card, artwork:cover ? await imports.imgb64(card.artwork) : null})))
 }
 
 /**Favorites strip formatter (characters and people) */

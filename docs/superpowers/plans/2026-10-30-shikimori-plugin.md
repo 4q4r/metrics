@@ -272,3 +272,39 @@ Header/name/genre/category metadata mirrors anilist (`name: 🎴 Shikimori watch
 5. Display inputs with unknown values (`display_favorites: cover, bogus`) → `bogus` dropped, rest renders → covered by assertion in case (a) inputs (`plugin_shikimori_display_favorites: cover, title, bogus`) → T1.
 
 **Proportion:** plan states contracts and exact values; no code transcripts. Proportional to a ~200-line spec for a multi-file plugin.
+
+---
+
+## Amendments (2026-10-30, post-review evidence)
+
+Supersedes the listed statements below; prepared from primary evidence in `/home/whoami/.opencode/plan/metrics-shikimori-prep/` (task-2-corrected-brief.md, proposed-amendments.md).
+
+### Owner decisions (new, binding)
+
+- **A1 — achievement chip label**: each achievement entry gains an optional `name` — `title_en`, or `title_ru` when `plugin_shikimori_title_language=russian`, falling back to `neko_id`. Task 4/5 read `name ?? neko_id`. (Owner: yes.)
+- **A2 — strip display toggles**: add `plugin_shikimori_display_characters` and `plugin_shikimori_display_people`, values `name, artwork`, default `name, artwork` — mirrors `display_favorites`. Task 4 renders per-field and elides artwork fetching when `artwork` is off. (Owner: yes, per D4's "every parameter of every module".)
+
+### Corrections from primary evidence
+
+- **C1/C3 — stats counts**: `stats.statuses`/`stats.full_statuses` are `{anime:[…], manga:[…]}`; each record is `{id, grouped_id, name, size, type}` — the count field is **`size`**. Read `full_statuses` (6 statuses, `rewatching` preserved) and map `size` → output `{name, value}`.
+- **C2 — activity**: buckets are native and account-variable (owner ≈13.2 days); map `{name:[from,to],value}` → `{from,to,value}` as-is. Do not assume a fixed ≈178.6-day width.
+- **C4/C8/C13 — achievement icons**: drop `neko-groups.json`. Build `neko-icons.json` = `{ [neko_id]: { [level]: "<path>" } }` from **`shikimori/neko-achievements` (MIT)** `priv/rules/*.yml` `metadata.image` (extensions vary: .jpg/.png/.gif). Never construct paths by pattern; unresolvable → `icon: null`. `icon` is resolved via `imports.imgb64(path, {fallback:false})` (data URI, or `null` → chip fallback).
+- **C5/C6 — summary sweep**: `userRates.status` is optional, so ONE sweep per target type (2 total), not 12. Page to the true end (short page); safety cap 100 pages/type that **throws a loud error** on exceed — never silently truncate the owner-approved summary.
+- **C7 — NEW hard constraint**: GraphQL **max query depth = 5** (a depth-6 query is rejected live). Keep every new document ≤ 5.
+- **C10/C11 — Task 2 test gate**: the meaningful TDD gate is the Task 1 harness (`tests/helpers/shikimori.mjs` + `tests/shikimori.test.js`); `tests/cases/shikimori.plugin.yml` stays all-skipped until Task 4 adds the classic partial.
+
+### Controller rulings (bounded alternatives, veto-able)
+
+- Statuses source = `full_statuses`; summary cap = loud error; genres = top-8 by `stats.genres` value desc, empty → omit the row; icon fallback = `null` → chip (a deliberate divergence from AniList's transparent placeholder).
+
+### Task 2 file list (per the corrected brief)
+
+Adds: `source/plugins/shikimori/neko-icons.json` (extracted from the MIT repo with provenance), extensions to `tests/helpers/shikimori.mjs` + `tests/shikimori.test.js`, and the two A2 metadata inputs.
+
+### Superseded statements in this plan
+
+- Task 2 §1 "anime+manga counts summed per status … `{name,value}`" → C1/C3.
+- Task 2 §2 pagination caps and "BOTH target types (all 6 statuses …)" → C5/C6.
+- Task 2 Interfaces icon pattern and `neko-groups.json` → C4/C8/C13.
+- Result contract `icon: resolved URL string or null` → C13.
+- Global Constraints → add C7 (depth ≤ 5).

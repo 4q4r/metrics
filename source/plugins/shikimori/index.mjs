@@ -14,8 +14,8 @@ export default async function({login, data, queries, imports, q, account}, {enab
 
     //User resolution
     console.debug(`metrics/compute/${login}/plugins > shikimori > resolving user ${user}`)
-    const found = await request({login, imports, url:`https://shikimori.io/api/users?search=${encodeURIComponent(user)}&limit=1`})
-    //The search is fuzzy and may rank a different account first; only an exact (case-insensitive) nickname match is accepted.
+    //The search is fuzzy and may rank a different account above the exact nickname, so inspect a small candidate window instead of a single top hit; only an exact (case-insensitive) match is accepted.
+    const found = await request({login, imports, url:`https://shikimori.io/api/users?search=${encodeURIComponent(user)}&limit=10`})
     const resolved = Array.isArray(found) ? found.find(({nickname}) => `${nickname}`.toLowerCase() === `${user}`.toLowerCase()) : null
     if (!resolved?.id)
       throw failure(`Could not resolve Shikimori user ${user}: no nickname exactly matching "${user}" was found`)
@@ -25,9 +25,13 @@ export default async function({login, data, queries, imports, q, account}, {enab
     if (sections.includes("lists")) {
       //Manga and ranobe share the Manga target type: query it once and split the rates client-side.
       const targets = [...new Set(medias.map(media => media === "anime" ? "Anime" : "Manga"))]
-      //Site order only needs enough pages to satisfy the display; score/release sorting needs the whole collection, and a disabled limit shows everything. The Task 2 stats summary keeps its own full pagination.
-      const paginate_all = (sort !== "site") || (limit === 0)
+      //Site order only needs enough pages to fill the displayed lists; score/release sorting needs the whole collection, a disabled limit shows everything, and any shuffle samples the whole collection before cutting it (AniList parity: shuffle then cut). The Task 2 stats summary keeps its own full pagination.
+      const paginate_all = (sort !== "site") || (limit === 0) || shuffle
       for (const targetType of targets) {
+        //Ranobe are exactly the light novel rates; light novels are therefore excluded from the general manga list. They are disjoint partitions of the shared Manga pool, so each displayed list must be filled, not merely their combined length.
+        const displayed = medias.filter(media => (media === "anime" ? "Anime" : "Manga") === targetType)
+        const partition = (media, rates) => media === "manga" ? rates.filter(({manga}) => manga?.kind !== "light_novel") : media === "ranobe" ? rates.filter(({manga}) => manga?.kind === "light_novel") : rates
+        const satisfied = rates => displayed.every(media => partition(media, rates).length >= limit)
         for (const status of statuses) {
           //Query API (pagination through userRates pages, the API clamps limit to 50 per page, capped at 10 pages)
           const rates = []
@@ -44,16 +48,10 @@ export default async function({login, data, queries, imports, q, account}, {enab
             rates.push(...entries)
             page++
           }
-          while ((entries.length === 50) && (page <= 10) && (paginate_all || (rates.length < limit)))
-          //Ranobe are exactly the light novel rates; light novels are therefore excluded from the general manga list.
-          for (const media of medias.filter(media => (media === "anime" ? "Anime" : "Manga") === targetType)) {
-            let list = rates
-            if (media === "manga")
-              list = rates.filter(({manga}) => manga?.kind !== "light_novel")
-            if (media === "ranobe")
-              list = rates.filter(({manga}) => manga?.kind === "light_novel")
+          while ((entries.length === 50) && (page <= 10) && (paginate_all || (!satisfied(rates))))
+          for (const media of displayed) {
             //Format and save results
-            list = list.map(rate => format({media, entity:targetType === "Anime" ? rate.anime : rate.manga, rate, title_language}))
+            const list = partition(media, rates).map(rate => format({media, entity:targetType === "Anime" ? rate.anime : rate.manga, rate, title_language}))
             result.lists[media][status] = await encode({list:mask({list:ordering({list, sort, shuffle, limit, imports}), score_display}), imports})
           }
         }

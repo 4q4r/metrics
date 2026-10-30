@@ -1,7 +1,7 @@
 /**Mocked data */
 export default function({faker, url}) {
   //User search
-  if (/^https:\/\/shikimori\.io\/api\/users\?search=.*&limit=1$/.test(url)) {
+  if (/^https:\/\/shikimori\.io\/api\/users\?search=.*&limit=10$/.test(url)) {
     const nickname = decodeURIComponent(url.match(/search=(?<nickname>[^&]*)/)?.groups?.nickname ?? faker.internet.userName())
     console.debug(`metrics/compute/mocks > mocking shikimori api result > user search > ${nickname}`)
     return ({

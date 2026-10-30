@@ -47,6 +47,10 @@ async function run() {
     listScoreOff:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"anime", "shikimori.sort":"score", "shikimori.score":"off"})},
     siteMinimal:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"anime", "shikimori.limit":2}), paginate:true},
     listScore:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"anime", "shikimori.sort":"score", "shikimori.limit":2}), paginate:true},
+    //Default sort+shuffle combination (site + yes): the shuffle pool must span more than one page.
+    siteShufflePages:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"anime", "shikimori.shuffle":"yes", "shikimori.limit":2}), paginate:true},
+    //Manga and ranobe are disjoint partitions of one Manga pool: both displayed lists must fill from it.
+    mixedRanobe:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"manga, ranobe", "shikimori.limit":2}), mixedRanobe:true},
     favoriteRelease:{q:inputs({"shikimori.medias":"anime", "shikimori.sort":"release", "shikimori.shuffle":"yes"})},
     favoriteUpdated:{q:inputs({"shikimori.medias":"anime", "shikimori.sort":"updated", "shikimori.shuffle":"yes"})},
     favoriteShuffle:{q:inputs({"shikimori.medias":"anime", "shikimori.shuffle":"yes"})},
@@ -64,6 +68,7 @@ async function run() {
     unknown:{q:inputs({"shikimori.sections":"favorites, unknown", "shikimori.display.favorites":"title, unknown, cover", "shikimori.display.lists":""})},
     missingUser:{q:inputs({"shikimori.user":"missing nickname"}), missingUser:true},
     nicknameMismatch:{q:inputs({"shikimori.user":"missing nickname"}), nicknameMismatch:true},
+    nicknameNotFirst:{q:inputs({"shikimori.user":"whynothacked"}), nicknameNotFirst:true},
     missingFavorite:{q:inputs({"shikimori.medias":"anime"}), missingFavorite:true},
     graphqlError:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"anime"}), graphqlError:true},
     malformedFavorites:{q:inputs({"shikimori.medias":"anime"}), malformedFavorites:true},
@@ -103,8 +108,16 @@ async function run() {
           calls.push({method:"get", url, options})
           if (scenario.transportError) throw error(500)
           if (scenario.retryGet && !getAttempts++) throw error(429)
-          if (url.includes("?search="))
-            return {data:scenario.missingUser ? [] : scenario.nicknameMismatch ? [{id:999, nickname:"a different account"}] : [{id:123, nickname:decodeURIComponent(url.match(/search=([^&]*)/)[1])}]}
+          if (url.includes("?search=")) {
+            //The live search returns only the first `limit` fuzzy candidates, so the fixture slices them the same way.
+            const requested = decodeURIComponent(url.match(/search=([^&]*)/)[1])
+            const limit = Number(url.match(/[?&]limit=(\d+)/)?.[1] ?? 1)
+            const candidates = scenario.missingUser ? []
+              : scenario.nicknameMismatch ? [{id:999, nickname:"a different account"}]
+                : scenario.nicknameNotFirst ? [{id:999, nickname:"a different account"}, {id:123, nickname:requested}]
+                  : [{id:123, nickname:requested}]
+            return {data:candidates.slice(0, limit)}
+          }
           if (!url.endsWith("/favourites")) throw new Error(`Unexpected fixture request: ${url}`)
           if (scenario.malformedFavorites) return {data:{}}
           return {data:scenario.empty ? Object.fromEntries(Object.keys(favorites).map(key => [key, []])) : {...favorites, ...(scenario.large ? {animes:Array.from({length:75}, (_, index) => favorite(index + 1))} : {}), ...(scenario.huge ? {animes:Array.from({length:250}, (_, index) => favorite(index + 1))} : {})}}
@@ -116,6 +129,16 @@ async function run() {
           const {query, variables} = body
           if (query.startsWith("query Lists ")) {
             const {targetType, page, status} = variables
+            if (scenario.mixedRanobe) {
+              //First Manga page carries a single light novel; the second carries two more, so a page-1-only bound under-fills ranobe.
+              const rate = (id, kind) => ({id:`${1000 + id}`, score:7, status, episodes:0, chapters:20, volumes:2, anime:entity(id), manga:{...entity(id, "manga"), kind}})
+              const userRates = page === 1
+                ? [rate(1, "light_novel"), ...Array.from({length:49}, (_, index) => rate(2 + index, "manga"))]
+                : page === 2
+                  ? [rate(60, "light_novel"), rate(61, "light_novel"), rate(62, "manga")]
+                  : []
+              return {data:{data:{userRates}}}
+            }
             const ids = scenario.paginate || scenario.fullPages ? Array.from({length:scenario.fullPages || page === 1 ? 50 : 3}, (_, index) => 100 + (page - 1) * 50 + index) : targetType === "Anime" ? [1, 2, 3] : [7, 8, 9]
             const rates = ids.map(id => ({id:`${1000 + id}`, score:7, status, episodes:targetType === "Anime" ? 6 : 0, chapters:targetType === "Manga" ? 20 : 0, volumes:targetType === "Manga" ? 2 : 0, anime:entity(id), manga:entity(id, "manga")}))
             return {data:{data:{userRates:rates}}}

@@ -114,6 +114,22 @@ describe("Shikimori data layer", () => {
     expect(pages(scenarios.listScore)).toEqual([1, 2])
     expect(scenarios.listScore.result?.lists.anime.watching).toHaveLength(2)
   })
+  test("the default sort+shuffle combination shuffles the whole collection while shuffle off stays bounded", () => {
+    const pages = scenario => scenario.calls.filter(({method}) => method === "post").map(({body}) => body.variables.page)
+    //Default sort=site + shuffle=yes: the shuffle pool must span more than the first page (AniList parity: shuffle then cut).
+    expect(pages(scenarios.siteShufflePages)).toEqual([1, 2])
+    expect(scenarios.siteShufflePages.result?.lists.anime.watching).toHaveLength(2)
+    expect(scenarios.siteShufflePages.shuffleCalls).toBe(1)
+    //shuffle off with a definite limit keeps the bounded single-page fetch.
+    expect(pages(scenarios.siteMinimal)).toEqual([1])
+  })
+  test("manga and ranobe lists both fill from the shared Manga pool", () => {
+    const {result, calls} = scenarios.mixedRanobe
+    expect(result?.lists.manga.watching).toHaveLength(2)
+    expect(result?.lists.ranobe.watching).toHaveLength(2)
+    //Paged past the first page to satisfy the ranobe partition, not just the shared pool length.
+    expect(calls.filter(({method}) => method === "post").map(({body}) => body.variables.page)).toEqual([1, 2])
+  })
   test("list requests select only the requested nested entity to fit the live complexity limit", () => {
     for (const {body} of scenarios.lists.calls.filter(({method}) => method === "post")) {
       const anime = body.variables.targetType === "Anime"
@@ -177,6 +193,14 @@ describe("Shikimori data layer", () => {
     //The nickname mismatch is caught before any other endpoint is queried.
     expect(calls.filter(({url}) => url.endsWith("/favourites"))).toEqual([])
     expect(calls.filter(({method}) => method === "post")).toEqual([])
+  })
+  test("an exact nickname that the fuzzy search does not rank first still resolves", () => {
+    const {result, error, calls} = scenarios.nicknameNotFirst
+    expect(error).toBeUndefined()
+    //Only the exact (case-insensitive) match is accepted, never the higher-ranked other account.
+    expect(result?.user).toEqual({id:123, nickname:"whynothacked"})
+    //The search inspects a small candidate window rather than a single top hit.
+    expect(calls.find(({method}) => method === "get").url).toMatch(/\?search=.*&limit=10$/)
   })
   test("a non-429 transport failure is not retried", () => {
     expect(scenarios.transportError.error?.message).toMatch(/API error: 500/)

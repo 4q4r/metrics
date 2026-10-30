@@ -42,6 +42,11 @@ async function run() {
     favoriteOrder:{q:inputs({"shikimori.medias":"anime", "shikimori.limit":0})},
     favoriteLarge:{q:inputs({"shikimori.medias":"anime", "shikimori.limit":0}), large:true},
     favoriteScore:{q:inputs({"shikimori.medias":"anime", "shikimori.sort":"score", "shikimori.shuffle":"yes"})},
+    favoriteScoreUser:{q:inputs({"shikimori.medias":"anime", "shikimori.sort":"score", "shikimori.score":"user"})},
+    favoriteHuge:{q:inputs({"shikimori.medias":"anime", "shikimori.limit":0}), huge:true},
+    listScoreOff:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"anime", "shikimori.sort":"score", "shikimori.score":"off"})},
+    siteMinimal:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"anime", "shikimori.limit":2}), paginate:true},
+    listScore:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"anime", "shikimori.sort":"score", "shikimori.limit":2}), paginate:true},
     favoriteRelease:{q:inputs({"shikimori.medias":"anime", "shikimori.sort":"release", "shikimori.shuffle":"yes"})},
     favoriteUpdated:{q:inputs({"shikimori.medias":"anime", "shikimori.sort":"updated", "shikimori.shuffle":"yes"})},
     favoriteShuffle:{q:inputs({"shikimori.medias":"anime", "shikimori.shuffle":"yes"})},
@@ -58,6 +63,7 @@ async function run() {
     empty:{q:inputs({"shikimori.sections":"favorites, characters, people"}), empty:true},
     unknown:{q:inputs({"shikimori.sections":"favorites, unknown", "shikimori.display.favorites":"title, unknown, cover", "shikimori.display.lists":""})},
     missingUser:{q:inputs({"shikimori.user":"missing nickname"}), missingUser:true},
+    nicknameMismatch:{q:inputs({"shikimori.user":"missing nickname"}), nicknameMismatch:true},
     missingFavorite:{q:inputs({"shikimori.medias":"anime"}), missingFavorite:true},
     graphqlError:{q:inputs({"shikimori.sections":"lists", "shikimori.medias":"anime"}), graphqlError:true},
     malformedFavorites:{q:inputs({"shikimori.medias":"anime"}), malformedFavorites:true},
@@ -98,10 +104,10 @@ async function run() {
           if (scenario.transportError) throw error(500)
           if (scenario.retryGet && !getAttempts++) throw error(429)
           if (url.includes("?search="))
-            return {data:scenario.missingUser ? [] : [{id:123, nickname:decodeURIComponent(url.match(/search=([^&]*)/)[1])}]}
+            return {data:scenario.missingUser ? [] : scenario.nicknameMismatch ? [{id:999, nickname:"a different account"}] : [{id:123, nickname:decodeURIComponent(url.match(/search=([^&]*)/)[1])}]}
           if (!url.endsWith("/favourites")) throw new Error(`Unexpected fixture request: ${url}`)
           if (scenario.malformedFavorites) return {data:{}}
-          return {data:scenario.empty ? Object.fromEntries(Object.keys(favorites).map(key => [key, []])) : {...favorites, ...(scenario.large ? {animes:Array.from({length:75}, (_, index) => favorite(index + 1))} : {})}}
+          return {data:scenario.empty ? Object.fromEntries(Object.keys(favorites).map(key => [key, []])) : {...favorites, ...(scenario.large ? {animes:Array.from({length:75}, (_, index) => favorite(index + 1))} : {}), ...(scenario.huge ? {animes:Array.from({length:250}, (_, index) => favorite(index + 1))} : {})}}
         },
         async post(url, body, options) {
           calls.push({method:"post", url, body, options})

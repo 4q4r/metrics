@@ -15,38 +15,47 @@ export default async function({login, data, queries, imports, q, account}, {enab
     //User resolution
     console.debug(`metrics/compute/${login}/plugins > shikimori > resolving user ${user}`)
     const found = await request({login, imports, url:`https://shikimori.io/api/users?search=${encodeURIComponent(user)}&limit=1`})
-    if ((!Array.isArray(found)) || (!found[0]?.id))
-      throw failure(`Could not resolve Shikimori user ${user}`)
-    result.user = {id:found[0].id, nickname:found[0].nickname}
+    //The search is fuzzy and may rank a different account first; only an exact (case-insensitive) nickname match is accepted.
+    const resolved = Array.isArray(found) ? found.find(({nickname}) => `${nickname}`.toLowerCase() === `${user}`.toLowerCase()) : null
+    if (!resolved?.id)
+      throw failure(`Could not resolve Shikimori user ${user}: no nickname exactly matching "${user}" was found`)
+    result.user = {id:resolved.id, nickname:resolved.nickname}
 
     //Medias lists
     if (sections.includes("lists")) {
-      for (const media of medias) {
+      //Manga and ranobe share the Manga target type: query it once and split the rates client-side.
+      const targets = [...new Set(medias.map(media => media === "anime" ? "Anime" : "Manga"))]
+      //Site order only needs enough pages to satisfy the display; score/release sorting needs the whole collection, and a disabled limit shows everything. The Task 2 stats summary keeps its own full pagination.
+      const paginate_all = (sort !== "site") || (limit === 0)
+      for (const targetType of targets) {
         for (const status of statuses) {
           //Query API (pagination through userRates pages, the API clamps limit to 50 per page, capped at 10 pages)
-          const targetType = media === "anime" ? "Anime" : "Manga"
           const rates = []
           let page = 1
           let entries
           do {
-            console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (lists ${media} ${status} - page ${page})`)
+            console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (lists ${targetType} ${status} - page ${page})`)
             const variables = {page, limit:50, userId:result.user.id, targetType, status, order:sort === "updated" ? {field:"updated_at", order:"desc"} : {field:"id", order:"asc"}}
-            const query = queries.shikimori.lists({media:media === "anime" ? "anime" : "manga", details:media === "anime" ? "episodes\n      studios { name }" : "chapters\n      volumes"})
+            const query = queries.shikimori.lists({media:targetType === "Anime" ? "anime" : "manga", details:targetType === "Anime" ? "episodes\n      studios { name }" : "chapters\n      volumes"})
             const response = await request({login, imports, url:"https://shikimori.io/api/graphql", body:{query, variables}})
             entries = response.data?.userRates
             if (!Array.isArray(entries))
-              throw failure(`Invalid Shikimori ${media} ${status} list response`)
+              throw failure(`Invalid Shikimori ${targetType} ${status} list response`)
             rates.push(...entries)
             page++
           }
-          while ((entries.length === 50) && (page <= 10))
-          //Ranobe are the light novel subset of manga rates.
-          let list = rates
-          if (media === "ranobe")
-            list = rates.filter(({manga}) => manga?.kind === "light_novel")
-          //Format and save results
-          list = list.map(rate => format({media, entity:media === "anime" ? rate.anime : rate.manga, rate, title_language, score_display}))
-          result.lists[media][status] = await encode({list:ordering({list, sort, shuffle, limit, imports}), imports})
+          while ((entries.length === 50) && (page <= 10) && (paginate_all || (rates.length < limit)))
+          //Ranobe are exactly the light novel rates; light novels are therefore excluded from the general manga list.
+          for (const media of medias.filter(media => (media === "anime" ? "Anime" : "Manga") === targetType)) {
+            let list = rates
+            if (media === "manga")
+              list = rates.filter(({manga}) => manga?.kind !== "light_novel")
+            if (media === "ranobe")
+              list = rates.filter(({manga}) => manga?.kind === "light_novel")
+            //Format and save results
+            list = list.map(rate => format({media, entity:targetType === "Anime" ? rate.anime : rate.manga, rate, title_language}))
+            result.lists[media][status] = await encode({list:mask({list:ordering({list, sort, shuffle, limit, imports}), score_display}), imports})
+          }
         }
       }
     }
@@ -67,23 +76,31 @@ export default async function({login, data, queries, imports, q, account}, {enab
         const entries = favorites[{anime:"animes", manga:"mangas", ranobe:"ranobe"}[media]]
         if (!entries.length)
           continue
-        //Catalog roots also clamp to 50. Alias ID batches in one POST per media.
+        //Catalog roots also clamp to 50 per alias. Resolve at most 100 ids per POST so heavy collections stay below the live GraphQL complexity cap, looping and merging into one map.
         const root = media === "anime" ? "animes" : "mangas"
-        const batches = [], variables = {}
-        for (let offset = 0; offset < entries.length; offset += 50) {
-          const key = `ids${batches.length}`
-          variables[key] = entries.slice(offset, offset + 50).map(({id}) => id).join(",")
-          batches.push(`media${batches.length}: ${root}(ids: $${key}, limit: 50) { ...FavoriteMedia }`)
+        const resolved = {}
+        let alias = 0
+        for (let offset = 0; offset < entries.length; offset += 100) {
+          const slice = entries.slice(offset, offset + 100)
+          const batches = [], variables = {}
+          for (let inner = 0; inner < slice.length; inner += 50) {
+            const key = `ids${batches.length}`
+            variables[key] = slice.slice(inner, inner + 50).map(({id}) => id).join(",")
+            batches.push(`media${alias}: ${root}(ids: $${key}, limit: 50) { ...FavoriteMedia }`)
+            alias++
+          }
+          const base = alias - batches.length
+          const query = queries.shikimori["favorites-medias"]({variables:Object.keys(variables).map(key => `$${key}: String!`).join(", "), medias:batches.join("\n  "), type:media === "anime" ? "Anime" : "Manga", details:media === "anime" ? "episodes\n  studios { name }" : "chapters\n  volumes"})
+          console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (favorites ${media}s - ${slice.length}/${entries.length} entries)`)
+          const {data:batch} = await request({login, imports, url:"https://shikimori.io/api/graphql", body:{query, variables}})
+          if (!batches.every((_, index) => Array.isArray(batch?.[`media${base + index}`])))
+            throw failure(`Invalid Shikimori ${media} favorites response`)
+          Object.assign(resolved, batch)
         }
-        const query = queries.shikimori["favorites-medias"]({variables:Object.keys(variables).map(key => `$${key}: String!`).join(", "), medias:batches.join("\n  "), type:media === "anime" ? "Anime" : "Manga", details:media === "anime" ? "episodes\n  studios { name }" : "chapters\n  volumes"})
-        console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (favorites ${media}s - ${entries.length} entries)`)
-        const {data:resolved} = await request({login, imports, url:"https://shikimori.io/api/graphql", body:{query, variables}})
-        if (!batches.every((_, index) => Array.isArray(resolved?.[`media${index}`])))
-          throw failure(`Invalid Shikimori ${media} favorites response`)
         //Format and save results, preserving the favorites response order
         const medias_data = new Map(Object.values(resolved).flat().map(entity => [`${entity.id}`, entity]))
-        const list = entries.map(({id, image}) => format({media, id, image, entity:medias_data.get(`${id}`), rate:null, title_language, score_display}))
-        result.favorites[media] = await encode({list:ordering({list, sort, shuffle, limit, imports}), imports})
+        const list = entries.map(({id, image}) => format({media, id, image, entity:medias_data.get(`${id}`), rate:null, title_language}))
+        result.favorites[media] = await encode({list:mask({list:ordering({list, sort, shuffle, limit, imports}), score_display}), imports})
       }
     }
 
@@ -106,12 +123,11 @@ export default async function({login, data, queries, imports, q, account}, {enab
   }
 }
 
-/**Media formatter */
-function format({media, entity, rate, id, image, title_language, score_display}) {
+/**Media formatter (raw scores; the display mask is applied after ordering) */
+function format({media, entity, rate, id, image, title_language}) {
   if (!entity)
     throw failure(`Could not resolve Shikimori ${media} ${id ?? rate?.id} card`)
   const type = media === "anime" ? "ANIME" : "MANGA"
-  const user_score = rate?.score ?? null
   return {
     name:entity[title_language] ?? entity.name,
     type,
@@ -121,14 +137,19 @@ function format({media, entity, rate, id, image, title_language, score_display})
     studio:type === "ANIME" ? entity.studios?.[0]?.name ?? null : null,
     progress:rate ? (media === "anime" ? rate.episodes : rate.chapters) : null,
     volumes:(rate) && (media !== "anime") ? rate.volumes : null,
-    description:entity.description?.replace(/<[^>]*>/g, " ") ?? "",
-    scores:{
-      user:(["user", "both"].includes(score_display)) ? user_score : null,
-      community:(["community", "both"].includes(score_display)) ? entity.score ?? null : null,
-    },
+    description:entity.description?.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() ?? "",
+    scores:{user:rate?.score ?? null, community:entity.score ?? null},
     released:type === "ANIME" ? entity.episodes ?? null : entity.chapters ?? null,
     artwork:imageUrl(entity.poster?.originalUrl ?? image),
   }
+}
+
+/**Apply the configured score display mask; it never affects sorting */
+function mask({list, score_display}) {
+  return list.map(card => ({...card, scores:{
+    user:["user", "both"].includes(score_display) ? card.scores.user : null,
+    community:["community", "both"].includes(score_display) ? card.scores.community : null,
+  }}))
 }
 
 /**Encode only the retained cards after sorting, shuffling and limiting */
@@ -147,7 +168,7 @@ async function strips({entries, imports, shuffle, limit}) {
   })))
 }
 
-/**Ordering helper (sort, shuffle then cut) */
+/**Ordering helper (sort on raw scores, shuffle then cut) */
 function ordering({list, sort, shuffle, limit, imports}) {
   let ordered = [...list]
   if (sort === "score")

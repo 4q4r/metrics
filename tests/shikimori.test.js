@@ -20,7 +20,7 @@ describe("Shikimori data layer", () => {
     for (const media of ["anime", "manga", "ranobe"])
       for (const status of ["watching", "completed"])
         expect(result.lists[media][status]).toHaveLength(2)
-    expect(calls.filter(({body}) => body?.query?.startsWith("query Lists ")).map(({body}) => body.variables.page)).toEqual([1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2])
+    expect(calls.filter(({body}) => body?.query?.startsWith("query Lists ")).map(({body}) => body.variables.page)).toEqual([1, 1, 1, 1])
   })
   test("defaults resolve the GitHub login and retain the Task 2 result slots", () => {
     const {result, parsed} = scenarios.defaults
@@ -35,7 +35,7 @@ describe("Shikimori data layer", () => {
   test("favorites restore REST order and use the relative image when no poster exists", () => {
     const {result} = scenarios.favoriteOrder
     expect(result?.favorites.anime.map(card => card.name)).toEqual(["Name 3", "English 1", "English 2"])
-    expect(result?.favorites.anime[0]).toEqual({name:"Name 3", type:"ANIME", status:"released", release:2020, genres:["Drama", "Adventure"], studio:"Studio", progress:null, volumes:null, description:"First  second ", scores:{user:null, community:5}, released:12, artwork:"encoded:https://shikimori.io/system/animes/x64/3.jpg"})
+    expect(result?.favorites.anime[0]).toEqual({name:"Name 3", type:"ANIME", status:"released", release:2020, genres:["Drama", "Adventure"], studio:"Studio", progress:null, volumes:null, description:"First second", scores:{user:null, community:5}, released:12, artwork:"encoded:https://shikimori.io/system/animes/x64/3.jpg"})
     expect(result?.favorites.anime[1].artwork).toBe("encoded:https://shikimori.io/uploads/poster/anime/1.jpg")
   })
   test("more than 50 favorites resolve in one GraphQL request without losing IDs", () => {
@@ -58,6 +58,24 @@ describe("Shikimori data layer", () => {
     expect(scenarios[name].result?.favorites.anime.map(card => card.name)).toEqual(expected)
     expect(scenarios[name].shuffleCalls).toBe(name === "favoriteShuffle" ? 1 : 0)
   })
+  test("heavy favorites resolve in batches of at most 100 ids while keeping site order", () => {
+    const {result, calls} = scenarios.favoriteHuge
+    expect(result?.favorites.anime).toHaveLength(250)
+    expect(result?.favorites.anime[0].name).toBe("English 1")
+    expect(result?.favorites.anime[249].name).toBe("English 250")
+    //250 ids are resolved in three POSTs (100 + 100 + 50), never one oversized alias query.
+    const posts = calls.filter(({method}) => method === "post")
+    expect(posts).toHaveLength(3)
+    expect(posts.flatMap(({body}) => Object.values(body.variables).flatMap(value => `${value}`.split(",")))).toHaveLength(250)
+  })
+  test("score sorting reads the raw values and ignores the display mask", () => {
+    //Favorites have no user score: with score=user the display mask nulls community, so a masked sort would fall back to -1 and keep site order.
+    expect(scenarios.favoriteScoreUser.result?.favorites.anime.map(card => card.name)).toEqual(["English 2", "Name 3"])
+    expect(scenarios.favoriteScoreUser.result?.favorites.anime[0].scores).toEqual({user:null, community:null})
+    //score=off nulls both display scores, but sort=score must still order by the raw community score.
+    expect(scenarios.listScoreOff.result?.lists.anime.watching.map(card => card.name)).toEqual(["English 2", "Name 3"])
+    expect(scenarios.listScoreOff.result?.lists.anime.watching[0].scores).toEqual({user:null, community:null})
+  })
   test("manga and ranobe favorites have no user progress or user score", () => {
     const {result} = scenarios.favoriteManga
     expect(result?.favorites.manga.map(card => card.name)).toEqual(["English 7", "English 8"])
@@ -68,10 +86,33 @@ describe("Shikimori data layer", () => {
   })
   test("lists select the requested entity even when both nested entities exist", () => {
     const {result} = scenarios.lists
-    expect(result?.lists.manga.watching.map(card => card.name)).toEqual(["English 7", "English 8", "English 9"])
+    expect(result?.lists.manga.watching.map(card => card.name)).toEqual(["English 7", "English 8"])
     expect(result?.lists.ranobe.watching.map(card => card.name)).toEqual(["English 9"])
     expect(result?.lists.manga.completed[0]).toMatchObject({type:"MANGA", progress:20, volumes:2, released:40, studio:null})
     expect(result?.lists.anime.watching[0]).toMatchObject({progress:6, volumes:null, released:12, studio:"Studio", scores:{user:7, community:2}})
+  })
+  test("light novels are excluded from manga lists and appear only in ranobe", () => {
+    const {result, calls} = scenarios.lists
+    for (const status of ["watching", "completed"]) {
+      const manga = result.lists.manga[status].map(card => card.name)
+      const ranobe = result.lists.ranobe[status].map(card => card.name)
+      //English 9 is the light novel; it must not be reachable through the manga media type.
+      expect(manga).not.toContain("English 9")
+      expect(ranobe).toEqual(["English 9"])
+      expect(manga.filter(name => ranobe.includes(name))).toEqual([])
+    }
+    //Manga rates are fetched once per status and split into manga/ranobe client-side (no duplicate Manga requests).
+    const lists = calls.filter(({body}) => body?.query?.startsWith("query Lists "))
+    expect(lists.filter(({body}) => body.variables.targetType === "Manga")).toHaveLength(2)
+  })
+  test("site-ordered lists fetch only enough pages for the display, while score sorting paginates fully", () => {
+    const pages = scenario => scenario.calls.filter(({method}) => method === "post").map(({body}) => body.variables.page)
+    //sort=site with a small limit: a single page already satisfies the display.
+    expect(pages(scenarios.siteMinimal)).toEqual([1])
+    expect(scenarios.siteMinimal.result?.lists.anime.watching).toHaveLength(2)
+    //sort=score needs the whole collection before sorting and cutting.
+    expect(pages(scenarios.listScore)).toEqual([1, 2])
+    expect(scenarios.listScore.result?.lists.anime.watching).toHaveLength(2)
   })
   test("list requests select only the requested nested entity to fit the live complexity limit", () => {
     for (const {body} of scenarios.lists.calls.filter(({method}) => method === "post")) {
@@ -128,6 +169,14 @@ describe("Shikimori data layer", () => {
   test.each([["missingUser", /missing nickname/], ["missingFavorite", /Shikimori.*3/], ["graphqlError", /Upstream schema failure/], ["malformedFavorites", /Shikimori/]])("%s produces a meaningful formatted error, not empty success", (name, error) => {
     expect(scenarios[name].error?.message).toMatch(error)
     expect(scenarios[name].result).toBeUndefined()
+  })
+  test("a fuzzy search result for another nickname is rejected instead of being rendered", () => {
+    const {error, result, calls} = scenarios.nicknameMismatch
+    expect(result).toBeUndefined()
+    expect(error?.message).toMatch(/missing nickname/)
+    //The nickname mismatch is caught before any other endpoint is queried.
+    expect(calls.filter(({url}) => url.endsWith("/favourites"))).toEqual([])
+    expect(calls.filter(({method}) => method === "post")).toEqual([])
   })
   test("a non-429 transport failure is not retried", () => {
     expect(scenarios.transportError.error?.message).toMatch(/API error: 500/)

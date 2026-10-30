@@ -22,6 +22,7 @@
 - Zero changes to core: `source/plugins/core/`, `source/app/` untouched. Allowed files: `source/plugins/shikimori/**`, `source/templates/classic/{partials/shikimori.ejs, partials/_.json, style.css}`, `tests/**`, `settings.example.json`, `source/app/web/statics/embed/app.placeholder.js`, `.github/{workflows/examples.yml, config/label.yml}`, regenerated `action.yml`/`README.md`, plugin `README.md`.
 - English section headers in the partial, AniList-consistent wording.
 - Work happens on branch `feat/shikimori-plugin` off `origin/master` in worktree `/tmp/metrics-wt01`.
+- Toolchain: **bun, never npm/npx** — deps via `bun install`, scripts via `bun run <script>`, jest via `bunx jest …` (`bun test` is a different runner — forbidden).
 
 ## Result data shape (the contract every task builds on)
 
@@ -119,10 +120,10 @@ Header/name/genre/category metadata mirrors anilist (`name: 🎴 Shikimori watch
 - [ ] 4. Write `queries/lists.graphql` and `queries/favorites-medias.graphql` (see Exact behavior for shapes/fields; fields: `name russian english japanese kind status airedOn { year } releasedOn { year } episodes chapters volumes score description genres { name } studios { name } poster { originalUrl }` + UserRate entry fields `id score status episodes chapters volumes`).
 - [ ] 5. Write `tests/mocks/api/axios/post/shikimori.mjs` and `tests/mocks/api/axios/get/shikimori.mjs` following the anilist mock contract (`export default function({faker, url, body, login})`, POST matches `/^https:..shikimori\.io\.api\.graphql.*$/` and branches on `/^query Lists /` / `/^query FavoritesMedias /`; GET branches on `/api/users\?search=`, `/api/users/\d+/favourites`, `/api/achievements\?user_id=`, `/api/users/\d+$` — include ALL v1 shapes even those Task 2 consumes: favourites all 8 keys, achievements array, profile stats). Artwork URLs in mocks: `null` (repo convention — anilist mocks use null images).
 - [ ] 6. Write failing test cases `tests/cases/shikimori.plugin.yml`: (a) favorites anime, (b) favorites manga + ranobe, (c) lists watching + completed with limit 2, (d) characters + people (`seyu, mangakas`), all with `plugin_shikimori: 'yes'`, `plugin_shikimori_user: whynothacked`, `use_mocked_data: 'yes'`, `verify: 'yes'`, mirroring `tests/cases/anilist.plugin.yml` shape.
-- [ ] 7. Run `npx jest --runInBand metrics.test.js -t "Shikimori"` → expect FAIL (plugin not implemented).
+- [ ] 7. Run `bunx jest --runInBand metrics.test.js -t "Shikimori"` → expect FAIL (plugin not implemented).
 - [ ] 8. Implement `source/plugins/shikimori/index.mjs` per Exact behavior (signature mirrors anilist; sections `stats`/`achievements`/`genres` return empty placeholders).
-- [ ] 9. Run `npx jest --runInBand metrics.test.js -t "Shikimori"` → expect PASS for cases (a)–(d) (GitHub Action mode; Web/placeholder modes may still fail — acceptable at this task, fixed by Tasks 4/5).
-- [ ] 10. `npm run linter` → 0 errors on new files. Commit: `feat(shikimori): plugin skeleton with lists, favorites and strips data layer`.
+- [ ] 9. Run `bunx jest --runInBand metrics.test.js -t "Shikimori"` → expect PASS for cases (a)–(d) (GitHub Action mode; Web/placeholder modes may still fail — acceptable at this task, fixed by Tasks 4/5).
+- [ ] 10. `bun run linter` → 0 errors on new files. Commit: `feat(shikimori): plugin skeleton with lists, favorites and strips data layer`.
 
 ---
 
@@ -151,7 +152,7 @@ Header/name/genre/category metadata mirrors anilist (`name: 🎴 Shikimori watch
 - [ ] 1. Extract neko_id → group map from the Shikimori open-source repo (`https://github.com/shikimori/shikimori`, neko achievements definitions) into `neko-groups.json`; record extraction date + source commit in the task report.
 - [ ] 2. Add jest cases (e) `sections: stats, genres` and (f) `sections: achievements` (both display variants: `display_achievements: icons` and `chips`) to `tests/cases/shikimori.plugin.yml`; run `-t "Shikimori"` → FAIL.
 - [ ] 3. Implement stats/achievements/genres in `index.mjs` per Exact behavior; adjust GET mocks only if their shapes don't match the verified v1 reality.
-- [ ] 4. `npx jest --runInBand metrics.test.js -t "Shikimori"` → PASS (action mode). `npm run linter` → 0 errors. Commit: `feat(shikimori): stats, achievements and genres data`.
+- [ ] 4. `bunx jest --runInBand metrics.test.js -t "Shikimori"` → PASS (action mode). `bun run linter` → 0 errors. Commit: `feat(shikimori): stats, achievements and genres data`.
 
 ---
 
@@ -194,8 +195,8 @@ Header/name/genre/category metadata mirrors anilist (`name: 🎴 Shikimori watch
 
 - [ ] 1. Write `shikimori.ejs` per Exact behavior (guard every section with `sections.includes(...)` and display-input membership, like the anilist partial does for `sections`).
 - [ ] 2. Register `"shikimori"` in `partials/_.json` after `"anilist"`; add the CSS block.
-- [ ] 3. `npx jest --runInBand metrics.test.js -t "Shikimori"` → action + web modes PASS (placeholder mode may still fail → Task 5). Render one mocked SVG locally (`dryrun` via the action runner used by jest is enough — jest already proves it) and capture a screenshot for the ledger.
-- [ ] 4. `npm run linter` → 0 errors. Commit: `feat(shikimori): classic template partial and scoped styles`.
+- [ ] 3. `bunx jest --runInBand metrics.test.js -t "Shikimori"` → action + web modes PASS (placeholder mode may still fail → Task 5). Render one mocked SVG locally (`dryrun` via the action runner used by jest is enough — jest already proves it) and capture a screenshot for the ledger.
+- [ ] 4. `bun run linter` → 0 errors. Commit: `feat(shikimori): classic template partial and scoped styles`.
 
 ---
 
@@ -211,8 +212,8 @@ Header/name/genre/category metadata mirrors anilist (`name: 🎴 Shikimori watch
 **Steps:**
 
 - [ ] 1. Add a `//Shikimori` block gated on `set.plugins.enabled.shikimori`, emitting the full Result data shape with faker (1×1 PNG data-URI artwork like anilist), honoring `sections`, `medias`, `statuses`, `people`, `limit*` options.
-- [ ] 2. `npx jest --runInBand metrics.test.js -t "Shikimori"` → ALL THREE modes PASS.
-- [ ] 3. `npm run linter` → 0 errors. Commit: `feat(shikimori): web instance placeholder mocks`.
+- [ ] 2. `bunx jest --runInBand metrics.test.js -t "Shikimori"` → ALL THREE modes PASS.
+- [ ] 3. `bun run linter` → 0 errors. Commit: `feat(shikimori): web instance placeholder mocks`.
 
 ---
 
@@ -233,8 +234,8 @@ Header/name/genre/category metadata mirrors anilist (`name: 🎴 Shikimori watch
 **Steps:**
 
 - [ ] 1. Write settings/label/README/examples/workflow entries following the anilist reference blocks verbatim in structure.
-- [ ] 2. Run `npm run build -- publish`; verify `git diff --stat` shows regenerated `action.yml` + `README.md` (+ `settings.example.json` indexes if the script touches them); commit the regenerated artifacts together with the hand-written ones: `feat(shikimori): registries, examples and manifest regeneration`.
-- [ ] 3. `npx jest --runInBand ci.test.js` → PASS (it validates manifest/tests consistency).
+- [ ] 2. Run `bun run build -- publish`; verify `git diff --stat` shows regenerated `action.yml` + `README.md` (+ `settings.example.json` indexes if the script touches them); commit the regenerated artifacts together with the hand-written ones: `feat(shikimori): registries, examples and manifest regeneration`.
+- [ ] 3. `bunx jest --runInBand ci.test.js` → PASS (it validates manifest/tests consistency).
 
 ---
 
@@ -248,7 +249,7 @@ Header/name/genre/category metadata mirrors anilist (`name: 🎴 Shikimori watch
 
 **Steps:**
 
-- [ ] 1. Full gates, standalone, in this order (each blocking): `npm run linter` → 0 errors; `npm test` → all PASS (includes all three Shikimori modes across all templates); `npm run build -- publish` → clean regen (`git diff` empty afterwards).
+- [ ] 1. Full gates, standalone, in this order (each blocking): `bun run linter` → 0 errors; `bun test` is NOT used (that is bun's own runner); full suite = `bun run test` → all PASS (includes all three Shikimori modes across all templates); `bun run build -- publish` → clean regen (`git diff` empty afterwards).
 - [ ] 2. Live smoke (read-only, UA `metrics`, ≤5 rps): run the action with real Shikimori data for `plugin_shikimori_user: whynothacked` (no mocks, dryrun) → SVG renders without error block; capture PNG screenshots of the SVG at representative viewport.
 - [ ] 3. Vision MCP `ui_diff_check` (D12): implementation screenshots vs Task 3 mockups (chips, badges, mini-block) → verdicts; deviations → fix round via dispatch, re-check after fix.
 - [ ] 4. Push branch (`git push -u origin feat/shikimori-plugin`; verify `git ls-remote origin feat/shikimori-plugin` matches local HEAD), open PR against `master`, wait for CodeRabbit + reviewer subagent, address findings, read full PR thread, then squash-merge and fast-forward local `master` (repo PR pipeline; deploy/none beyond merge without explicit word).

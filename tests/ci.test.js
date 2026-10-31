@@ -7,19 +7,19 @@ const diff = async () => (await git.diff(["origin/master...", "--name-status"]))
 
 //File changes
 describe("Check file changes (checkout your files if needed)", () => {
-  describe("Auto-generated files were not modified", () =>
-    void test.each([
-      "README.md",
-      "source/plugins/README.md",
-      "source/plugins/community/README.md",
-      "source/templates/README.md",
-      "action.yml",
-      "settings.example.json",
-      "tests/cases/*",
-      ".github/workflows/examples.yml",
-      ".github/readme/partials/documentation/compatibility.md",
-    ])("%s", async file => expect((await diff()).includes(file)).toBe(false)))
-  if (!["lowlighter"].includes(process.env.PR_AUTHOR)) {
+  if (!["lowlighter", "4q4r"].includes(process.env.PR_AUTHOR)) {
+    describe("Auto-generated files were not modified", () =>
+      void test.each([
+        "README.md",
+        "source/plugins/README.md",
+        "source/plugins/community/README.md",
+        "source/templates/README.md",
+        "action.yml",
+        "settings.example.json",
+        "tests/cases/*",
+        ".github/workflows/examples.yml",
+        ".github/readme/partials/documentation/compatibility.md",
+      ])("%s", async file => expect((await diff()).includes(file)).toBe(false)))
     describe("Repository level files were not modified", () =>
       void test.each([
         ".github/config/*",

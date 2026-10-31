@@ -43,6 +43,7 @@ Plugins provide additional content and lets you customize rendered metrics.
   * [⏱️ Google PageSpeed <sub>`pagespeed`</sub>](/source/plugins/pagespeed/README.md)
   * [✒️ Recent posts <sub>`posts`</sub>](/source/plugins/posts/README.md)
   * [🗼 Rss feed <sub>`rss`</sub>](/source/plugins/rss/README.md)
+  * [🎴 Shikimori watch list and reading list <sub>`shikimori`</sub>](/source/plugins/shikimori/README.md)
   * [🗨️ Stack Overflow <sub>`stackoverflow`</sub>](/source/plugins/stackoverflow/README.md)
   * [🕹️ Steam <sub>`steam`</sub>](/source/plugins/steam/README.md)
   * [🐤 Latest tweets <sub>`tweets`</sub>](/source/plugins/tweets/README.md) <sub>`⚠️ deprecated`</sub>

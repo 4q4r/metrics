@@ -180,6 +180,9 @@
     "leetcode":{
       "enabled": false,                 "//": "Enable leetcode plugin"
     },
+    "shikimori":{
+      "enabled": false,                 "//": "Enable Shikimori plugin"
+    },
     "steam":{
       "token": "Steam token",
       "enabled": false,                 "//": "Enable steam plugin"

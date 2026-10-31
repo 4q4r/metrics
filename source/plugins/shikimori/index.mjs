@@ -10,19 +10,40 @@ export default async function({login, data, queries, imports, q, account}, {enab
       return null
 
     //Load inputs
-    const {user, medias, sections, statuses, people, sort, "title.language":title_language, score:score_display, limit, "limit.characters":limit_characters, "limit.people":limit_people, shuffle, "display.stats":display_stats, "achievements.filter":achievements_filter, "limit.achievements":limit_achievements, "display.achievements":display_achievements, "display.favorites":display_favorites, "display.lists":display_lists, "display.characters":display_characters, "display.people":display_people} = imports.metadata.plugins.shikimori.inputs({data, account, q})
+    const {
+      user,
+      medias,
+      sections,
+      statuses,
+      people,
+      sort,
+      "title.language": title_language,
+      score: score_display,
+      limit,
+      "limit.characters": limit_characters,
+      "limit.people": limit_people,
+      shuffle,
+      "display.stats": display_stats,
+      "achievements.filter": achievements_filter,
+      "limit.achievements": limit_achievements,
+      "display.achievements": display_achievements,
+      "display.favorites": display_favorites,
+      "display.lists": display_lists,
+      "display.characters": display_characters,
+      "display.people": display_people,
+    } = imports.metadata.plugins.shikimori.inputs({data, account, q})
 
     //Initialization
-    const result = {user:null, sections, lists:Object.fromEntries(medias.map(media => [media, {}])), favorites:Object.fromEntries(medias.map(media => [media, []])), characters:[], people:{}, stats:{}, achievements:[], genres:[]}
+    const result = {user: null, sections, lists: Object.fromEntries(medias.map(media => [media, {}])), favorites: Object.fromEntries(medias.map(media => [media, []])), characters: [], people: {}, stats: {}, achievements: [], genres: []}
 
     //User resolution
     console.debug(`metrics/compute/${login}/plugins > shikimori > resolving user ${user}`)
     //The search is fuzzy and may rank a different account above the exact nickname, so inspect a small candidate window instead of a single top hit; only an exact (case-insensitive) match is accepted.
-    const found = await request({login, imports, url:`https://shikimori.io/api/users?search=${encodeURIComponent(user)}&limit=10`})
+    const found = await request({login, imports, url: `https://shikimori.io/api/users?search=${encodeURIComponent(user)}&limit=10`})
     const resolved = Array.isArray(found) ? found.find(({nickname}) => `${nickname}`.toLowerCase() === `${user}`.toLowerCase()) : null
     if (!resolved?.id)
       throw failure(`Could not resolve Shikimori user ${user}: no nickname exactly matching "${user}" was found`)
-    result.user = {id:resolved.id, nickname:resolved.nickname}
+    result.user = {id: resolved.id, nickname: resolved.nickname}
 
     //Medias lists
     if (sections.includes("lists")) {
@@ -42,9 +63,9 @@ export default async function({login, data, queries, imports, q, account}, {enab
           let entries
           do {
             console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (lists ${targetType} ${status} - page ${page})`)
-            const variables = {page, limit:50, userId:result.user.id, targetType, status, order:sort === "updated" ? {field:"updated_at", order:"desc"} : {field:"id", order:"asc"}}
-            const query = queries.shikimori.lists({media:targetType === "Anime" ? "anime" : "manga", details:targetType === "Anime" ? "episodes\n      studios { name }" : "chapters\n      volumes"})
-            const response = await request({login, imports, url:"https://shikimori.io/api/graphql", body:{query, variables}})
+            const variables = {page, limit: 50, userId: result.user.id, targetType, status, order: sort === "updated" ? {field: "updated_at", order: "desc"} : {field: "id", order: "asc"}}
+            const query = queries.shikimori.lists({media: targetType === "Anime" ? "anime" : "manga", details: targetType === "Anime" ? "episodes\n      studios { name }" : "chapters\n      volumes"})
+            const response = await request({login, imports, url: "https://shikimori.io/api/graphql", body: {query, variables}})
             entries = response.data?.userRates
             if (!Array.isArray(entries))
               throw failure(`Invalid Shikimori ${targetType} ${status} list response`)
@@ -54,8 +75,8 @@ export default async function({login, data, queries, imports, q, account}, {enab
           while ((entries.length === 50) && (page <= 10) && (paginate_all || (!satisfied(rates))))
           for (const media of displayed) {
             //Format and save results
-            const list = partition(media, rates).map(rate => format({media, entity:targetType === "Anime" ? rate.anime : rate.manga, rate, title_language}))
-            result.lists[media][status] = await encode({list:mask({list:ordering({list, sort, shuffle, limit, imports}), score_display}), imports, cover:display_lists.includes("cover")})
+            const list = partition(media, rates).map(rate => format({media, entity: targetType === "Anime" ? rate.anime : rate.manga, rate, title_language}))
+            result.lists[media][status] = await encode({list: mask({list: ordering({list, sort, shuffle, limit, imports}), score_display}), imports, cover: display_lists.includes("cover")})
           }
         }
       }
@@ -65,7 +86,7 @@ export default async function({login, data, queries, imports, q, account}, {enab
     let favorites = null
     if ((sections.includes("favorites")) || (sections.includes("characters")) || (sections.includes("people"))) {
       console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (favorites)`)
-      favorites = await request({login, imports, url:`https://shikimori.io/api/users/${result.user.id}/favourites`})
+      favorites = await request({login, imports, url: `https://shikimori.io/api/users/${result.user.id}/favourites`})
       if (!["animes", "mangas", "ranobe", "characters", "people", "seyu", "mangakas", "producers"].every(kind => Array.isArray(favorites?.[kind])))
         throw failure("Invalid Shikimori favorites response")
     }
@@ -74,7 +95,7 @@ export default async function({login, data, queries, imports, q, account}, {enab
     if (sections.includes("favorites")) {
       for (const media of medias) {
         //Favorites entries in Shikimori website order
-        const entries = favorites[{anime:"animes", manga:"mangas", ranobe:"ranobe"}[media]]
+        const entries = favorites[{anime: "animes", manga: "mangas", ranobe: "ranobe"}[media]]
         if (!entries.length)
           continue
         //Catalog roots also clamp to 50 per alias. Resolve at most 100 ids per POST so heavy collections stay below the live GraphQL complexity cap, looping and merging into one map.
@@ -91,34 +112,34 @@ export default async function({login, data, queries, imports, q, account}, {enab
             alias++
           }
           const base = alias - batches.length
-          const query = queries.shikimori["favorites-medias"]({variables:Object.keys(variables).map(key => `$${key}: String!`).join(", "), medias:batches.join("\n  "), type:media === "anime" ? "Anime" : "Manga", details:media === "anime" ? "episodes\n  studios { name }" : "chapters\n  volumes"})
+          const query = queries.shikimori["favorites-medias"]({variables: Object.keys(variables).map(key => `$${key}: String!`).join(", "), medias: batches.join("\n  "), type: media === "anime" ? "Anime" : "Manga", details: media === "anime" ? "episodes\n  studios { name }" : "chapters\n  volumes"})
           console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (favorites ${media}s - ${slice.length}/${entries.length} entries)`)
-          const {data:batch} = await request({login, imports, url:"https://shikimori.io/api/graphql", body:{query, variables}})
+          const {data: batch} = await request({login, imports, url: "https://shikimori.io/api/graphql", body: {query, variables}})
           if (!batches.every((_, index) => Array.isArray(batch?.[`media${base + index}`])))
             throw failure(`Invalid Shikimori ${media} favorites response`)
           Object.assign(resolved, batch)
         }
         //Format and save results, preserving the favorites response order
         const medias_data = new Map(Object.values(resolved).flat().map(entity => [`${entity.id}`, entity]))
-        const list = entries.map(({id, image}) => format({media, id, image, entity:medias_data.get(`${id}`), rate:null, title_language}))
-        result.favorites[media] = await encode({list:mask({list:ordering({list, sort, shuffle, limit, imports}), score_display}), imports, cover:display_favorites.includes("cover")})
+        const list = entries.map(({id, image}) => format({media, id, image, entity: medias_data.get(`${id}`), rate: null, title_language}))
+        result.favorites[media] = await encode({list: mask({list: ordering({list, sort, shuffle, limit, imports}), score_display}), imports, cover: display_favorites.includes("cover")})
       }
     }
 
     //Favorites characters
     if (sections.includes("characters"))
-      result.characters = await strips({entries:favorites.characters, imports, shuffle:sort === "site" && shuffle, limit:limit_characters, artwork:display_characters.includes("artwork")})
+      result.characters = await strips({entries: favorites.characters, imports, shuffle: sort === "site" && shuffle, limit: limit_characters, artwork: display_characters.includes("artwork")})
 
     //Favorites people (one strip per selected key, in configuration order)
     if (sections.includes("people")) {
       for (const kind of people)
-        result.people[kind] = await strips({entries:favorites[kind], imports, shuffle:sort === "site" && shuffle, limit:limit_people, artwork:display_people.includes("artwork")})
+        result.people[kind] = await strips({entries: favorites[kind], imports, shuffle: sort === "site" && shuffle, limit: limit_people, artwork: display_people.includes("artwork")})
     }
 
     //Profile statistics (v1 API, shared by stats and genres sections)
     if ((sections.includes("stats")) || (sections.includes("genres"))) {
       console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (profile statistics)`)
-      const profile = await request({login, imports, url:`https://shikimori.io/api/users/${result.user.id}`})
+      const profile = await request({login, imports, url: `https://shikimori.io/api/users/${result.user.id}`})
       if ((!profile?.stats) || (typeof profile.stats !== "object") || (Array.isArray(profile.stats)))
         throw failure("Invalid Shikimori profile statistics response")
       const {stats} = profile
@@ -133,10 +154,10 @@ export default async function({login, data, queries, imports, q, account}, {enab
           counts.set(name, (counts.get(name) ?? 0) + size)
         }
         result.stats = {
-          summary:display_stats.includes("summary") ? await summarize({login, imports, queries, userId:result.user.id}) : null,
-          statuses:[...counts].map(([name, value]) => ({name, value})),
-          scores:stats.scores,
-          activity:stats.activity.map(({name:[from, to], value}) => ({from, to, value})),
+          summary: display_stats.includes("summary") ? await summarize({login, imports, queries, userId: result.user.id}) : null,
+          statuses: [...counts].map(([name, value]) => ({name, value})),
+          scores: stats.scores,
+          activity: stats.activity.map(({name: [from, to], value}) => ({from, to, value})),
         }
       }
       if (sections.includes("genres"))
@@ -146,7 +167,7 @@ export default async function({login, data, queries, imports, q, account}, {enab
     //Achievements (v1 API; image-less responses use exact per-level metadata from the MIT rules source)
     if (sections.includes("achievements")) {
       console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (achievements)`)
-      const entries = await request({login, imports, url:`https://shikimori.io/api/achievements?user_id=${result.user.id}`})
+      const entries = await request({login, imports, url: `https://shikimori.io/api/achievements?user_id=${result.user.id}`})
       if ((!Array.isArray(entries)) || (!entries.every(entry => (typeof entry?.neko_id === "string") && (Number.isInteger(entry.level)) && (Number.isFinite(entry.progress)))))
         throw failure("Invalid Shikimori achievements response")
       const selected = entries.filter(({level}) => achievements_filter === "all" || level >= 1).sort((a, b) => b.level - a.level || b.progress - a.progress)
@@ -157,9 +178,11 @@ export default async function({login, data, queries, imports, q, account}, {enab
       const icons = display_achievements.includes("icons") ? JSON.parse(fs.readFileSync(new URL("./neko-icons.json", import.meta.url), "utf8")) : null
       const language = title_language === "russian" ? "title_ru" : "title_en"
       result.achievements = await Promise.all(selected.map(async ({neko_id, level, progress}) => ({
-        neko_id, level, progress,
-        name:titles[neko_id]?.[String(level)]?.[language] || neko_id,
-        icon:await achievementIcon({path:icons?.[neko_id]?.[String(level)], imports}),
+        neko_id,
+        level,
+        progress,
+        name: titles[neko_id]?.[String(level)]?.[language] || neko_id,
+        icon: await achievementIcon({path: icons?.[neko_id]?.[String(level)], imports}),
       })))
     }
 
@@ -177,7 +200,7 @@ async function achievementIcon({path, imports}) {
   if (!path)
     return null
   try {
-    return await imports.imgb64(imageUrl(path), {fallback:false})
+    return await imports.imgb64(imageUrl(path), {fallback: false})
   }
   catch (error) {
     console.debug(`metrics/imgb64 > shikimori > achievement icon failed for ${path}: ${error}`)
@@ -187,7 +210,7 @@ async function achievementIcon({path, imports}) {
 
 /**Sum all rate counters independently of card media, status, sort and display limits */
 async function summarize({login, imports, queries, userId}) {
-  const summary = {episodes:0, chapters:0}
+  const summary = {episodes: 0, chapters: 0}
   const query = queries.shikimori.summary()
   const max_pages = 100
   for (const targetType of ["Anime", "Manga"]) {
@@ -195,8 +218,8 @@ async function summarize({login, imports, queries, userId}) {
     for (let page = 1; page <= max_pages; page++) {
       console.debug(`metrics/compute/${login}/plugins > shikimori > querying api (summary ${targetType} - page ${page})`)
       //Status is optional: one sweep per target covers every status, including Manga-kind ranobe rates.
-      const variables = {page, limit:50, userId, targetType, order:{field:"id", order:"asc"}}
-      const response = await request({login, imports, url:"https://shikimori.io/api/graphql", body:{query, variables}})
+      const variables = {page, limit: 50, userId, targetType, order: {field: "id", order: "asc"}}
+      const response = await request({login, imports, url: "https://shikimori.io/api/graphql", body: {query, variables}})
       const entries = response?.data?.userRates
       if (!Array.isArray(entries))
         throw failure(`Invalid Shikimori ${targetType} summary response`)
@@ -220,32 +243,35 @@ function format({media, entity, rate, id, image, title_language}) {
     throw failure(`Could not resolve Shikimori ${media} ${id ?? rate?.id} card`)
   const type = media === "anime" ? "ANIME" : "MANGA"
   return {
-    name:entity[title_language] ?? entity.name,
+    name: entity[title_language] ?? entity.name,
     type,
-    status:entity.status,
-    release:entity.airedOn?.year ?? entity.releasedOn?.year ?? null,
-    genres:(entity.genres ?? []).map(({name}) => name),
-    studio:type === "ANIME" ? entity.studios?.[0]?.name ?? null : null,
-    progress:rate ? (media === "anime" ? rate.episodes : rate.chapters) : null,
-    volumes:(rate) && (media !== "anime") ? rate.volumes : null,
-    description:entity.description?.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() ?? "",
-    scores:{user:rate?.score ?? null, community:entity.score ?? null},
-    released:type === "ANIME" ? entity.episodes ?? null : entity.chapters ?? null,
-    artwork:imageUrl(entity.poster?.originalUrl ?? image),
+    status: entity.status,
+    release: entity.airedOn?.year ?? entity.releasedOn?.year ?? null,
+    genres: (entity.genres ?? []).map(({name}) => name),
+    studio: type === "ANIME" ? entity.studios?.[0]?.name ?? null : null,
+    progress: rate ? (media === "anime" ? rate.episodes : rate.chapters) : null,
+    volumes: (rate) && (media !== "anime") ? rate.volumes : null,
+    description: entity.description?.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() ?? "",
+    scores: {user: rate?.score ?? null, community: entity.score ?? null},
+    released: type === "ANIME" ? entity.episodes ?? null : entity.chapters ?? null,
+    artwork: imageUrl(entity.poster?.originalUrl ?? image),
   }
 }
 
 /**Apply the configured score display mask; it never affects sorting */
 function mask({list, score_display}) {
-  return list.map(card => ({...card, scores:{
-    user:["user", "both"].includes(score_display) ? card.scores.user : null,
-    community:["community", "both"].includes(score_display) ? card.scores.community : null,
-  }}))
+  return list.map(card => ({
+    ...card,
+    scores: {
+      user: ["user", "both"].includes(score_display) ? card.scores.user : null,
+      community: ["community", "both"].includes(score_display) ? card.scores.community : null,
+    },
+  }))
 }
 
 /**Encode only retained cards with visible covers after sorting, shuffling and limiting */
 async function encode({list, imports, cover}) {
-  return Promise.all(list.map(async card => ({...card, artwork:cover ? await imports.imgb64(card.artwork) : null})))
+  return Promise.all(list.map(async card => ({...card, artwork: cover ? await imports.imgb64(card.artwork) : null})))
 }
 
 /**Favorites strip formatter (characters and people) */
@@ -255,7 +281,7 @@ async function strips({entries, imports, shuffle, limit, artwork}) {
     selected = selected.slice(0, limit)
   return Promise.all(selected.map(async ({name, image}) => ({
     name,
-    artwork:artwork ? await imports.imgb64(imageUrl(image)) : null,
+    artwork: artwork ? await imports.imgb64(imageUrl(image)) : null,
   })))
 }
 
@@ -280,14 +306,14 @@ function imageUrl(image) {
 
 /**Preserve actionable messages through the shared error formatter */
 function failure(message) {
-  return {error:{message, instance:new Error(message)}}
+  return {error: {message, instance: new Error(message)}}
 }
 
 /**Anonymous request with rate-limit-only retries */
 async function request({login, imports, url, body}) {
   for (;;) {
     try {
-      const options = {headers:{"User-Agent":"metrics"}, timeout:30000}
+      const options = {headers: {"User-Agent": "metrics"}, timeout: 30000}
       const {data} = body ? await imports.axios.post(url, body, options) : await imports.axios.get(url, options)
       if (data?.errors?.length)
         throw failure(`Shikimori GraphQL error: ${data.errors.map(({message}) => message).join("; ")}`)

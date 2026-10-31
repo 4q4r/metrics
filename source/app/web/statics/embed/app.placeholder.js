@@ -1069,12 +1069,13 @@
                 const statuses = (options["shikimori.statuses"] ?? "watching").split(",").map(x => x.trim()).filter(x => x)
                 const limit = Number(options["shikimori.limit"]) || 2
                 const allStatuses = ["planned", "watching", "rewatching", "completed", "on_hold", "dropped"]
-                const populate = (type, mediaName) => Object.fromEntries(allStatuses.map(status => [
-                  status,
-                  sections.includes("lists") && statuses.includes(status)
-                    ? new Array(limit).fill(null).map(_ => media(faker.lorem.words(), type))
-                    : [],
-                ]))
+                const populate = (type, mediaName) =>
+                  Object.fromEntries(allStatuses.map(status => [
+                    status,
+                    sections.includes("lists") && statuses.includes(status)
+                      ? new Array(limit).fill(null).map(_ => media(faker.lorem.words(), type))
+                      : [],
+                  ]))
                 return {
                   anime: medias.includes("anime") ? populate("ANIME", "Anime") : Object.fromEntries(allStatuses.map(status => [status, []])),
                   manga: medias.includes("manga") ? populate("MANGA", "Manga") : Object.fromEntries(allStatuses.map(status => [status, []])),

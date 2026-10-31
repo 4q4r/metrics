@@ -13,7 +13,7 @@
     "nextControlFlowPosition": "nextLine",
     "spaceSurroundingProperties": false
   },
-  "includes": ["**/*.{js,mjs}"],
+  "includes": ["**/*.{js,mjs}", "../../**/*.{js,mjs}"],
   "excludes": [
     "node_modules/**/*",
     ".github/scripts/quickstart/**/*"

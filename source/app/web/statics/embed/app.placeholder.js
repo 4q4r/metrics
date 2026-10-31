@@ -1058,8 +1058,8 @@
                   volumes: type === "MANGA" ? faker.number.int(20) : null,
                   description: faker.lorem.paragraph(),
                   scores: {
-                    user: options["shikimori.score"] === "community" ? null : faker.number.int(10),
-                    community: options["shikimori.score"] === "user" ? null : faker.number.float({min: 1, max: 10, fractionDigits: 2}),
+                    user: ["user", "both"].includes(options["shikimori.score"] ?? "community") ? faker.number.int(10) : null,
+                    community: ["community", "both"].includes(options["shikimori.score"] ?? "community") ? faker.number.float({min: 1, max: 10, fractionDigits: 2}) : null,
                   },
                   released: 100 + faker.number.int(1000),
                   artwork: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mOcOnfpfwAGfgLYttYINwAAAABJRU5ErkJggg==",
@@ -1067,7 +1067,9 @@
                 const sections = (options["shikimori.sections"] ?? "favorites").split(",").map(x => x.trim()).filter(x => x)
                 const medias = (options["shikimori.medias"] ?? "anime, manga").split(",").map(x => x.trim()).filter(x => x)
                 const statuses = (options["shikimori.statuses"] ?? "watching").split(",").map(x => x.trim()).filter(x => x)
-                const limit = Number(options["shikimori.limit"]) || 2
+                const limit = options["shikimori.limit"] !== undefined && !Number.isNaN(Number(options["shikimori.limit"]))
+                  ? (Number(options["shikimori.limit"]) === 0 ? 6 : Number(options["shikimori.limit"]))
+                  : 2
                 const allStatuses = ["planned", "watching", "rewatching", "completed", "on_hold", "dropped"]
                 const populate = (type, mediaName) =>
                   Object.fromEntries(allStatuses.map(status => [
@@ -1095,14 +1097,16 @@
                   description: faker.lorem.paragraph(),
                   scores: {
                     user: null,
-                    community: options["shikimori.score"] === "user" ? null : faker.number.float({min: 1, max: 10, fractionDigits: 2}),
+                    community: ["community", "both"].includes(options["shikimori.score"] ?? "community") ? faker.number.float({min: 1, max: 10, fractionDigits: 2}) : null,
                   },
                   released: 100 + faker.number.int(1000),
                   artwork: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mOcOnfpfwAGfgLYttYINwAAAABJRU5ErkJggg==",
                 })
                 const sections = (options["shikimori.sections"] ?? "favorites").split(",").map(x => x.trim()).filter(x => x)
                 const medias = (options["shikimori.medias"] ?? "anime, manga").split(",").map(x => x.trim()).filter(x => x)
-                const limit = Number(options["shikimori.limit"]) || 2
+                const limit = options["shikimori.limit"] !== undefined && !Number.isNaN(Number(options["shikimori.limit"]))
+                  ? (Number(options["shikimori.limit"]) === 0 ? 6 : Number(options["shikimori.limit"]))
+                  : 2
                 return {
                   anime: sections.includes("favorites") && medias.includes("anime") ? new Array(limit).fill(null).map(_ => media(faker.lorem.words(), "ANIME")) : [],
                   manga: sections.includes("favorites") && medias.includes("manga") ? new Array(limit).fill(null).map(_ => media(faker.lorem.words(), "MANGA")) : [],
@@ -1110,7 +1114,9 @@
                 }
               },
               get characters() {
-                const limit = Number(options["shikimori.limit.characters"]) || 22
+                const limit = options["shikimori.limit.characters"] !== undefined && !Number.isNaN(Number(options["shikimori.limit.characters"]))
+                  ? (Number(options["shikimori.limit.characters"]) === 0 ? 30 : Number(options["shikimori.limit.characters"]))
+                  : 22
                 const sections = (options["shikimori.sections"] ?? "favorites").split(",").map(x => x.trim()).filter(x => x)
                 return sections.includes("characters")
                   ? new Array(limit).fill(null).map(_ => ({
@@ -1120,7 +1126,9 @@
                   : []
               },
               get people() {
-                const limit = Number(options["shikimori.limit.people"]) || 22
+                const limit = options["shikimori.limit.people"] !== undefined && !Number.isNaN(Number(options["shikimori.limit.people"]))
+                  ? (Number(options["shikimori.limit.people"]) === 0 ? 30 : Number(options["shikimori.limit.people"]))
+                  : 22
                 const sections = (options["shikimori.sections"] ?? "favorites").split(",").map(x => x.trim()).filter(x => x)
                 const peopleKinds = (options["shikimori.people"] ?? "people, seyu").split(",").map(x => x.trim()).filter(x => x)
                 if (!sections.includes("people"))
@@ -1157,7 +1165,9 @@
                 })),
               },
               get achievements() {
-                const limit = Number(options["shikimori.limit.achievements"]) || 22
+                const limit = options["shikimori.limit.achievements"] !== undefined && !Number.isNaN(Number(options["shikimori.limit.achievements"]))
+                  ? (Number(options["shikimori.limit.achievements"]) === 0 ? 30 : Number(options["shikimori.limit.achievements"]))
+                  : 22
                 const sections = (options["shikimori.sections"] ?? "favorites").split(",").map(x => x.trim()).filter(x => x)
                 if (!sections.includes("achievements"))
                   return []

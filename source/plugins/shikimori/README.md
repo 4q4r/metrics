@@ -312,7 +312,7 @@ Achievements use English titles unless Russian is selected, falling back to thei
 <b>type:</b> <code>array</code>
 <i>(comma-separated)</i>
 <br>
-<b>default:</b> cover, title, description, score, progress, year, status, genres, type<br>
+<b>default:</b> cover, title, description, score, user_score, progress, year, status, genres, type<br>
 <b>allowed values:</b><ul><li>cover</li><li>title</li><li>description</li><li>score</li><li>progress</li><li>user_score</li><li>year</li><li>status</li><li>genres</li><li>studio</li><li>type</li></ul></td>
   </tr>
   <tr>
@@ -386,7 +386,7 @@ with:
   plugin_shikimori: yes
   plugin_shikimori_user: whynothacked
   plugin_shikimori_sections: achievements, stats
-  plugin_shikimori_achievements_limit: 16
+  plugin_shikimori_limit_achievements: 16
 
 ```
 <!--/examples-->

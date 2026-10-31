@@ -30,6 +30,6 @@
     plugin_shikimori: 'yes'
     plugin_shikimori_user: whynothacked
     plugin_shikimori_sections: achievements, stats
-    plugin_shikimori_achievements_limit: 16
+    plugin_shikimori_limit_achievements: 16
     use_mocked_data: 'yes'
     verify: 'yes'

@@ -240,7 +240,7 @@ inputs:
       Displayed fields on lists medias cards
     type: array
     format: comma-separated
-    default: cover, title, description, score, progress, year, status, genres, type
+    default: cover, title, description, score, user_score, progress, year, status, genres, type
     values:
       - cover
       - title

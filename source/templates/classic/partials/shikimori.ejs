@@ -35,7 +35,7 @@
         };
         const display = {
           favorites:fields("favorites", ["cover", "title", "description", "score", "year", "status", "genres", "type"], card_fields),
-          lists:fields("lists", ["cover", "title", "description", "score", "progress", "year", "status", "genres", "type"], card_fields),
+          lists:fields("lists", ["cover", "title", "description", "score", "user_score", "progress", "year", "status", "genres", "type"], card_fields),
           characters:fields("characters", ["name", "artwork"]), people:fields("people", ["name", "artwork"]),
           stats:fields("stats", ["summary", "statuses", "distribution", "activity"]), achievements:fields("achievements", ["icons", "chips"]),
         };
@@ -135,9 +135,9 @@
             </div>
           <% } %>
           <% const strips = [];
-            if (sections.includes("characters")) strips.push({header:"Favorites characters", entries:characters, fields:display.characters});
+            if (sections.includes("characters") && characters.length) strips.push({header:"Favorites characters", entries:characters, fields:display.characters});
             if (sections.includes("people")) {
-              for (const [kind, entries] of Object.entries(people)) strips.push({header:`Favorites ${kind}`, entries, fields:display.people});
+              for (const [kind, entries] of Object.entries(people)) if (entries.length) strips.push({header:`Favorites ${kind}`, entries, fields:display.people});
             }
           %>
           <% for (const {header, entries, fields} of strips) { %>

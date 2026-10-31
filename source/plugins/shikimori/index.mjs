@@ -311,7 +311,7 @@ function failure(message) {
 
 /**Anonymous request with rate-limit-only retries */
 async function request({login, imports, url, body}) {
-  for (;;) {
+  for (let attempt = 1; ; attempt++) {
     try {
       const options = {headers: {"User-Agent": "metrics"}, timeout: 30000}
       const {data} = body ? await imports.axios.post(url, body, options) : await imports.axios.get(url, options)
@@ -322,8 +322,13 @@ async function request({login, imports, url, body}) {
     catch (error) {
       if ((!error.isAxiosError) || (error.response?.status !== 429))
         throw error
-      const retry_after = Number(error.response.headers?.["retry-after"])
-      const delay = (Number.isFinite(retry_after) ? Math.max(0, retry_after) : 0) + 5
+      if (attempt >= 5)
+        throw failure(`Shikimori requests limit reached after ${attempt} attempts`)
+      const retry_header = error.response.headers?.["retry-after"]
+      const retry_seconds = Number(retry_header)
+      const retry_date = Date.parse(retry_header)
+      const retry_after = Number.isFinite(retry_seconds) ? retry_seconds : Number.isFinite(retry_date) ? Math.ceil((retry_date - Date.now()) / 1000) : 0
+      const delay = Math.max(0, retry_after) + 5
       console.debug(`metrics/compute/${login}/plugins > shikimori > reached requests limit, retrying in ${delay}s`)
       await imports.wait(delay)
     }

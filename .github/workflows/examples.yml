@@ -1063,56 +1063,6 @@ jobs:
           user: lowlighter
           plugins_errors_fatal: yes
         if: ${{ success() || failure() }}
-      - name: >-
-          🎴 Shikimori watch list and reading list - Favorites anime and currently
-          watching
-        uses: lowlighter/metrics@master
-        with:
-          filename: metrics.plugin.shikimori.svg
-          token: NOT_NEEDED
-          base: ""
-          plugin_shikimori: yes
-          plugin_shikimori_user: whynothacked
-          plugin_shikimori_medias: anime
-          plugin_shikimori_sections: favorites, lists
-          plugin_shikimori_statuses: watching
-          plugin_shikimori_limit: 2
-          output_action: none
-          delay: 120
-          user: lowlighter
-          plugins_errors_fatal: yes
-        if: ${{ success() || failure() }}
-      - name: 🎴 Shikimori watch list and reading list - Favorites manga and ranobe
-        uses: lowlighter/metrics@master
-        with:
-          filename: metrics.plugin.shikimori.manga.svg
-          token: NOT_NEEDED
-          base: ""
-          plugin_shikimori: yes
-          plugin_shikimori_user: whynothacked
-          plugin_shikimori_medias: manga, ranobe
-          plugin_shikimori_sections: favorites
-          plugin_shikimori_limit: 2
-          output_action: none
-          delay: 120
-          user: lowlighter
-          plugins_errors_fatal: yes
-        if: ${{ success() || failure() }}
-      - name: 🎴 Shikimori watch list and reading list - Achievements and stats
-        uses: lowlighter/metrics@master
-        with:
-          filename: metrics.plugin.shikimori.achievements.svg
-          token: NOT_NEEDED
-          base: ""
-          plugin_shikimori: yes
-          plugin_shikimori_user: whynothacked
-          plugin_shikimori_sections: achievements, stats
-          plugin_shikimori_achievements_limit: 16
-          output_action: none
-          delay: 120
-          user: lowlighter
-          plugins_errors_fatal: yes
-        if: ${{ success() || failure() }}
       - name: 🕹️ Steam - Recently played games
         uses: lowlighter/metrics@master
         with:

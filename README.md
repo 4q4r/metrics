@@ -19,7 +19,7 @@ Generate metrics that can be embedded everywhere, including your GitHub profile 
   </tr>
   <tr>
     <th colspan="2" align="center">
-      <h3><a href="/README.md#-plugins">🧩 Customizable with 48 plugins and 356 options!</a></h3>
+      <h3><a href="/README.md#-plugins">🧩 Customizable with 47 plugins and 335 options!</a></h3>
     </th>
   </tr>
   <tr>
@@ -290,7 +290,7 @@ Generate metrics that can be embedded everywhere, including your GitHub profile 
   </tr>
   <tr>
     <th><a href="source/plugins/leetcode/README.md">🗳️ Leetcode</a></th>
-    <th><a href="source/plugins/shikimori/README.md">🎴 Shikimori watch list and reading list</a></th>
+    <th><a href="source/plugins/steam/README.md">🕹️ Steam</a></th>
   </tr>
   <tr>
         <td  align="center">
@@ -298,23 +298,10 @@ Generate metrics that can be embedded everywhere, including your GitHub profile 
         <img width="900" height="1" alt="">
       </td>
         <td  align="center">
-        <details open><summary>Favorites and watching</summary><img alt="" width="400" src="https://github.com/lowlighter/metrics/blob/examples/metrics.plugin.shikimori.svg" alt=""></img></details>
-        <details><summary>Favorites manga and ranobe</summary><img alt="" width="400" src="https://github.com/lowlighter/metrics/blob/examples/metrics.plugin.shikimori.manga.svg" alt=""></img></details>
-        <details open><summary>Achievements and stats</summary><img alt="" width="400" src="https://github.com/lowlighter/metrics/blob/examples/metrics.plugin.shikimori.achievements.svg" alt=""></img></details>
-        <img width="900" height="1" alt="">
-      </td>
-  </tr>
-  <tr>
-    <th><a href="source/plugins/steam/README.md">🕹️ Steam</a></th>
-    <th></th>
-  </tr>
-  <tr>
-        <td  align="center">
         <details open><summary>Recently played games</summary><img alt="" width="400" src="https://github.com/lowlighter/metrics/blob/examples/metrics.plugin.steam.svg" alt=""></img></details>
         <details><summary>Profile and detailed game history</summary><img alt="" width="400" src="https://github.com/lowlighter/metrics/blob/examples/metrics.plugin.steam.full.svg" alt=""></img></details>
         <img width="900" height="1" alt="">
       </td>
-    <td align="center"><img width="900" height="1" alt=""></td>
   </tr>
   <tr>
     <th colspan="2" align="center">
@@ -541,7 +528,6 @@ Plugins provide additional content and lets you customize rendered metrics.
   * [⏱️ Google PageSpeed <sub>`pagespeed`</sub>](/source/plugins/pagespeed/README.md)
   * [✒️ Recent posts <sub>`posts`</sub>](/source/plugins/posts/README.md)
   * [🗼 Rss feed <sub>`rss`</sub>](/source/plugins/rss/README.md)
-  * [🎴 Shikimori watch list and reading list <sub>`shikimori`</sub>](/source/plugins/shikimori/README.md)
   * [🗨️ Stack Overflow <sub>`stackoverflow`</sub>](/source/plugins/stackoverflow/README.md)
   * [🕹️ Steam <sub>`steam`</sub>](/source/plugins/steam/README.md)
   * [🐤 Latest tweets <sub>`tweets`</sub>](/source/plugins/tweets/README.md) <sub>`⚠️ deprecated`</sub>

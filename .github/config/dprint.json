@@ -16,7 +16,10 @@
   "includes": ["**/*.{js,mjs}", "../../**/*.{js,mjs}"],
   "excludes": [
     "node_modules/**/*",
-    ".github/scripts/quickstart/**/*"
+    "../../node_modules/**/*",
+    ".github/scripts/quickstart/**/*",
+    "../../.github/scripts/quickstart/**/*",
+    "**/.github/scripts/quickstart/**/*"
   ],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.83.0.wasm"

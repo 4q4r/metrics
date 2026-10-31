@@ -10,7 +10,7 @@ export default async function({login, data, queries, imports, q, account}, {enab
       return null
 
     //Load inputs
-    const {user, medias, sections, statuses, people, sort, "title.language":title_language, score:score_display, limit, "limit.characters":limit_characters, "limit.people":limit_people, shuffle, "display.stats":display_stats, "achievements.filter":achievements_filter, "limit.achievements":limit_achievements, "display.achievements":display_achievements, "display.favorites":display_favorites, "display.lists":display_lists} = imports.metadata.plugins.shikimori.inputs({data, account, q})
+    const {user, medias, sections, statuses, people, sort, "title.language":title_language, score:score_display, limit, "limit.characters":limit_characters, "limit.people":limit_people, shuffle, "display.stats":display_stats, "achievements.filter":achievements_filter, "limit.achievements":limit_achievements, "display.achievements":display_achievements, "display.favorites":display_favorites, "display.lists":display_lists, "display.characters":display_characters, "display.people":display_people} = imports.metadata.plugins.shikimori.inputs({data, account, q})
 
     //Initialization
     const result = {user:null, sections, lists:Object.fromEntries(medias.map(media => [media, {}])), favorites:Object.fromEntries(medias.map(media => [media, []])), characters:[], people:{}, stats:{}, achievements:[], genres:[]}
@@ -107,12 +107,12 @@ export default async function({login, data, queries, imports, q, account}, {enab
 
     //Favorites characters
     if (sections.includes("characters"))
-      result.characters = await strips({entries:favorites.characters, imports, shuffle:sort === "site" && shuffle, limit:limit_characters})
+      result.characters = await strips({entries:favorites.characters, imports, shuffle:sort === "site" && shuffle, limit:limit_characters, artwork:display_characters.includes("artwork")})
 
     //Favorites people (one strip per selected key, in configuration order)
     if (sections.includes("people")) {
       for (const kind of people)
-        result.people[kind] = await strips({entries:favorites[kind], imports, shuffle:sort === "site" && shuffle, limit:limit_people})
+        result.people[kind] = await strips({entries:favorites[kind], imports, shuffle:sort === "site" && shuffle, limit:limit_people, artwork:display_people.includes("artwork")})
     }
 
     //Profile statistics (v1 API, shared by stats and genres sections)
@@ -249,13 +249,13 @@ async function encode({list, imports, cover}) {
 }
 
 /**Favorites strip formatter (characters and people) */
-async function strips({entries, imports, shuffle, limit}) {
+async function strips({entries, imports, shuffle, limit, artwork}) {
   let selected = shuffle ? imports.shuffle([...entries]) : entries
   if (limit > 0)
     selected = selected.slice(0, limit)
   return Promise.all(selected.map(async ({name, image}) => ({
     name,
-    artwork:await imports.imgb64(imageUrl(image)),
+    artwork:artwork ? await imports.imgb64(imageUrl(image)) : null,
   })))
 }
 

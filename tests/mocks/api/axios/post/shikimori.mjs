@@ -22,6 +22,20 @@ export default function({faker, url, body}) {
       studios:type === "anime" ? new Array(1).fill(null).map(_ => ({name:faker.company.name()})) : undefined,
       poster:{originalUrl:null},
     })
+    //Summary query (scalar counters, full first page followed by a terminating short page)
+    if (/^query Summary /.test(query)) {
+      console.debug("metrics/compute/mocks > mocking shikimori api result > Summary")
+      const {page = 1, limit = 50, targetType = "Anime"} = variables
+      const count = page === 1 ? Math.min(limit, 50) : page === 2 ? Math.min(limit, 3) : 0
+      return ({
+        status:200,
+        data:{
+          data:{
+            userRates:new Array(count).fill(null).map(_ => ({episodes:targetType === "Anime" ? 2 : 0, chapters:targetType === "Manga" ? 5 : 0})),
+          },
+        },
+      })
+    }
     //Lists query (userRates)
     if (/^query Lists /.test(query)) {
       console.debug("metrics/compute/mocks > mocking shikimori api result > Lists")

@@ -91,6 +91,9 @@ async function run() {
     stripsShuffle:{q:inputs({"shikimori.sections":"characters, people", "shikimori.people":"seyu", "shikimori.limit.characters":1, "shikimori.limit.people":1, "shikimori.shuffle":"yes"})},
     stripsNoShuffle:{q:inputs({"shikimori.sections":"characters, people", "shikimori.people":"seyu", "shikimori.sort":"release", "shikimori.shuffle":"yes"})},
     stripFields:{q:inputs({"shikimori.sections":"characters, people", "shikimori.people":"seyu", "shikimori.display.characters":"name", "shikimori.display.people":"name"})},
+    stripCharactersNoArtwork:{q:inputs({"shikimori.sections":"characters, people", "shikimori.people":"seyu", "shikimori.display.characters":"name"})},
+    stripPeopleNoArtwork:{q:inputs({"shikimori.sections":"characters, people", "shikimori.people":"seyu", "shikimori.display.people":"name"})},
+    stripNoDisplay:{q:inputs({"shikimori.sections":"characters, people", "shikimori.people":"seyu", "shikimori.display.characters":"", "shikimori.display.people":""})},
     statsGeneric:{q:inputs({"shikimori.sections":"stats", "shikimori.display.stats":"statuses, distribution, activity"})},
     statsNoSummary:{q:inputs({"shikimori.sections":"stats", "shikimori.display.stats":"statuses"})},
     statsNoSummaryWithLists:{q:inputs({"shikimori.sections":"stats, lists", "shikimori.medias":"anime", "shikimori.display.stats":"statuses"})},
@@ -283,23 +286,40 @@ async function run() {
   await mocks({graphql:() => {
     throw new Error("Unexpected GitHub fixture request")
   }, rest:{}})
-  const calls = []
-  try {
-    const q = inputs({"shikimori.sections":"favorites, lists, characters, people, stats, achievements, genres", "shikimori.medias":"anime, manga, ranobe", "shikimori.statuses":"watching, completed", "shikimori.people":"seyu, mangakas", "shikimori.display.stats":"statuses, distribution, activity", "shikimori.display.achievements":"chips"})
-    const result = await Plugins.shikimori({login:"test", data:{user:{login:"default-nickname"}}, q, account:"user", queries:conf.queries, imports:{...utils, metadata:conf.metadata, format, axios:{
-      get(url, options) {
-        calls.push({method:"get", url, options})
-        return utils.axios.get(url, options)
-      },
-      post(url, body, options) {
-        calls.push({method:"post", url, body, options})
-        return utils.axios.post(url, body, options)
-      },
-    }}}, {enabled:true, extras:true})
-    reports.repoMocks = {result, calls}
+  //Any unmatched repository mock must fail before axios can make a live request.
+  const {adapter} = utils.axios.defaults
+  const liveRequests = []
+  utils.axios.defaults.adapter = async config => {
+    liveRequests.push(config.url)
+    throw new Error(`Unexpected live axios request: ${config.url}`)
   }
-  catch (error) {
-    reports.repoMocks = {error:{message:error.error?.message, cause:error.error?.instance?.message}, calls}
+  try {
+    for (const [name, overrides] of Object.entries({
+      repoMocks:{"shikimori.sections":"favorites, lists, characters, people, stats, achievements, genres", "shikimori.medias":"anime, manga, ranobe", "shikimori.statuses":"watching, completed", "shikimori.people":"seyu, mangakas", "shikimori.display.stats":"statuses, distribution, activity", "shikimori.display.achievements":"chips"},
+      repoSummaryMocks:{"shikimori.sections":"stats, genres", "shikimori.medias":"ranobe", "shikimori.display.stats":"summary, statuses, distribution, activity"},
+    })) {
+      const calls = []
+      const q = inputs(overrides)
+      try {
+        const result = await Plugins.shikimori({login:"test", data:{user:{login:"default-nickname"}}, q, account:"user", queries:conf.queries, imports:{...utils, metadata:conf.metadata, format, axios:{
+          get(url, options) {
+            calls.push({method:"get", url, options})
+            return utils.axios.get(url, options)
+          },
+          post(url, body, options) {
+            calls.push({method:"post", url, body, options})
+            return utils.axios.post(url, body, options)
+          },
+        }}}, {enabled:true, extras:true})
+        reports[name] = {result, calls, liveRequests:[...liveRequests]}
+      }
+      catch (error) {
+        reports[name] = {error:{message:error.error?.message, cause:error.error?.instance?.message}, calls, liveRequests:[...liveRequests]}
+      }
+    }
+  }
+  finally {
+    utils.axios.defaults.adapter = adapter
   }
   return reports
 }

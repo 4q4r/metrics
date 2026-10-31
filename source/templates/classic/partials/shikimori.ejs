@@ -148,7 +148,7 @@
                   <% if (fields.includes("artwork") && artwork) { %>
                     <img src="<%= artwork %>" width="36" height="54" alt="<%= fields.includes("name") ? name : "" %>" <% if (fields.includes("name")) { %>title="<%= name %>"<% } %>/>
                   <% } else if (fields.includes("name")) { %>
-                    <span class="field"><%= name %></span>
+                    <span class="field name"><%= name %></span>
                   <% } %>
                 <% } %>
               </div>

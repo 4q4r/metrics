@@ -616,6 +616,24 @@ describe("Shikimori classic partial", () => {
     expect(text(names)).toContain("Producer A")
     expect(text(names)).toContain("Voice A")
   })
+  test("text-only strips render separated entries with scoped name classes in characters and people strips", async () => {
+    const data = {
+      ...defaults,
+      sections:["characters", "people"],
+      characters:[{name:"Character A", artwork:null}, {name:"Character B", artwork:null}],
+      people:{seyu:[{name:"Voice A", artwork:null}, {name:"Voice B", artwork:null}]},
+    }
+    const root = await render(data, {"shikimori.display.characters":"name", "shikimori.display.people":"name"})
+    const charNames = [...root.querySelectorAll(".shikimori .characters")][0].querySelectorAll(".name")
+    expect(charNames).toHaveLength(2)
+    expect([...charNames].map(el => el.textContent.trim())).toEqual(["Character A", "Character B"])
+    expect([...charNames].every(el => el.classList.contains("field") && el.classList.contains("name"))).toBe(true)
+
+    const seyuNames = [...root.querySelectorAll(".shikimori .characters")][1].querySelectorAll(".name")
+    expect(seyuNames).toHaveLength(2)
+    expect([...seyuNames].map(el => el.textContent.trim())).toEqual(["Voice A", "Voice B"])
+    expect([...seyuNames].every(el => el.classList.contains("field") && el.classList.contains("name"))).toBe(true)
+  })
   test("artwork-only and empty strip display inputs hide names without changing the configured strip order", async () => {
     const data = {...defaults, sections:["characters", "people"]}
     const artwork = await render(data, {"shikimori.display.characters":"artwork", "shikimori.display.people":"artwork"})

@@ -1113,10 +1113,20 @@
 .shikimori .characters {
   display: flex;
   flex-wrap: wrap;
+  column-gap: 8px;
+  row-gap: 4px;
 }
 .shikimori .characters img {
   margin: 2px;
   border-radius: 7px;
+}
+.shikimori .characters .name {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: #666666;
+  white-space: nowrap;
 }
 
 /* Shikimori: status chips */

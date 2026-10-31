@@ -24,6 +24,8 @@
   - source/plugins/activity/**
 🌸 plugin anilist:
   - source/plugins/anilist/**
+🎴 plugin shikimori:
+  - source/plugins/shikimori/**
 📆 plugin calendar:
   - source/plugins/calendar/**
 ♐ plugin code:

@@ -1243,6 +1243,93 @@ inputs:
     default: <default-value>
 
   # ====================================================================================
+  # 🎴 Shikimori watch list and reading list
+
+  plugin_shikimori:
+    description: Enable Shikimori plugin
+    default: <default-value>
+
+  plugin_shikimori_user:
+    description: Shikimori login
+    default: <default-value>
+
+  plugin_shikimori_medias:
+    description: Medias types
+    default: <default-value>
+
+  plugin_shikimori_sections:
+    description: Displayed sections
+    default: <default-value>
+
+  plugin_shikimori_statuses:
+    description: Medias lists statuses to display (requires `lists` section)
+    default: <default-value>
+
+  plugin_shikimori_people:
+    description: Liked people strips to display (requires `people` section)
+    default: <default-value>
+
+  plugin_shikimori_achievements_filter:
+    description: Achievements filter (requires `achievements` section)
+    default: <default-value>
+
+  plugin_shikimori_sort:
+    description: Sorting method for medias and favorites
+    default: <default-value>
+
+  plugin_shikimori_title_language:
+    description: Title language used for medias and achievement names
+    default: <default-value>
+
+  plugin_shikimori_score:
+    description: Displayed scores on medias cards
+    default: <default-value>
+
+  plugin_shikimori_limit:
+    description: Display limit (medias)
+    default: <default-value>
+
+  plugin_shikimori_limit_characters:
+    description: Display limit (characters)
+    default: <default-value>
+
+  plugin_shikimori_limit_people:
+    description: Display limit (people, per strip)
+    default: <default-value>
+
+  plugin_shikimori_limit_achievements:
+    description: Display limit (achievements)
+    default: <default-value>
+
+  plugin_shikimori_shuffle:
+    description: Shuffle data
+    default: <default-value>
+
+  plugin_shikimori_display_characters:
+    description: Displayed fields on characters strip (requires `characters` section)
+    default: <default-value>
+
+  plugin_shikimori_display_people:
+    description: Displayed fields on people strips (requires `people` section)
+    default: <default-value>
+
+  plugin_shikimori_display_favorites:
+    description: Displayed fields on favorites medias cards
+    default: <default-value>
+
+  plugin_shikimori_display_lists:
+    description: Displayed fields on lists medias cards
+    default: <default-value>
+
+  plugin_shikimori_display_stats:
+    description: Displayed fields on statistics block (requires `stats` section)
+    default: <default-value>
+
+  plugin_shikimori_display_achievements:
+    description: Displayed fields on achievements block (requires `achievements` section)
+    default: <default-value>
+
+  # ====================================================================================
   # 🕹️ Steam
 
   plugin_steam:

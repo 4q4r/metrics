@@ -5,6 +5,10 @@ description: |
 disclaimer: |
   This plugin is not affiliated, associated, authorized, endorsed by, or in any way officially connected with [Shikimori](https://shikimori.io).
   All product and company names are trademarks™ or registered® trademarks of their respective holders.
+examples:
+  +Favorites and watching: https://github.com/lowlighter/metrics/blob/examples/metrics.plugin.shikimori.svg
+  Favorites manga and ranobe: https://github.com/lowlighter/metrics/blob/examples/metrics.plugin.shikimori.manga.svg
+  +Achievements and stats: https://github.com/lowlighter/metrics/blob/examples/metrics.plugin.shikimori.achievements.svg
 supports:
   - user
   - organization

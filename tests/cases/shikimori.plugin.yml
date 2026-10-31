@@ -1,16 +1,18 @@
 - name: >-
-    🎴 Shikimori watch list and reading list - Favorites animes
+    🎴 Shikimori watch list and reading list - Favorites anime and currently
+    watching
   uses: lowlighter/metrics@latest
   with:
     token: NOT_NEEDED
     plugin_shikimori: 'yes'
     plugin_shikimori_user: whynothacked
     plugin_shikimori_medias: anime
-    plugin_shikimori_sections: favorites
+    plugin_shikimori_sections: favorites, lists
+    plugin_shikimori_statuses: watching
+    plugin_shikimori_limit: 2
     use_mocked_data: 'yes'
     verify: 'yes'
-- name: >-
-    🎴 Shikimori watch list and reading list - Favorites mangas and ranobe
+- name: 🎴 Shikimori watch list and reading list - Favorites manga and ranobe
   uses: lowlighter/metrics@latest
   with:
     token: NOT_NEEDED
@@ -18,65 +20,16 @@
     plugin_shikimori_user: whynothacked
     plugin_shikimori_medias: manga, ranobe
     plugin_shikimori_sections: favorites
-    use_mocked_data: 'yes'
-    verify: 'yes'
-- name: >-
-    🎴 Shikimori watch list and reading list - Lists watching and completed
-  uses: lowlighter/metrics@latest
-  with:
-    token: NOT_NEEDED
-    plugin_shikimori: 'yes'
-    plugin_shikimori_user: whynothacked
-    plugin_shikimori_medias: anime, manga
-    plugin_shikimori_sections: lists
-    plugin_shikimori_statuses: watching, completed
     plugin_shikimori_limit: 2
     use_mocked_data: 'yes'
     verify: 'yes'
-- name: >-
-    🎴 Shikimori watch list and reading list - Characters and people strips
+- name: 🎴 Shikimori watch list and reading list - Achievements and stats
   uses: lowlighter/metrics@latest
   with:
     token: NOT_NEEDED
     plugin_shikimori: 'yes'
     plugin_shikimori_user: whynothacked
-    plugin_shikimori_sections: characters, people
-    plugin_shikimori_people: seyu, mangakas
-    plugin_shikimori_limit_characters: 22
-    plugin_shikimori_limit_people: 22
-    use_mocked_data: 'yes'
-    verify: 'yes'
-- name: >-
-    🎴 Shikimori watch list and reading list - Statistics and genres
-  uses: lowlighter/metrics@latest
-  with:
-    token: NOT_NEEDED
-    plugin_shikimori: 'yes'
-    plugin_shikimori_user: whynothacked
-    plugin_shikimori_sections: stats, genres
-    plugin_shikimori_display_stats: summary, statuses, distribution, activity
-    use_mocked_data: 'yes'
-    verify: 'yes'
-- name: >-
-    🎴 Shikimori watch list and reading list - Achievement icons
-  uses: lowlighter/metrics@latest
-  with:
-    token: NOT_NEEDED
-    plugin_shikimori: 'yes'
-    plugin_shikimori_user: whynothacked
-    plugin_shikimori_sections: achievements
-    plugin_shikimori_display_achievements: icons
-    use_mocked_data: 'yes'
-    verify: 'yes'
-- name: >-
-    🎴 Shikimori watch list and reading list - Achievement chips
-  uses: lowlighter/metrics@latest
-  with:
-    token: NOT_NEEDED
-    plugin_shikimori: 'yes'
-    plugin_shikimori_user: whynothacked
-    plugin_shikimori_sections: achievements
-    plugin_shikimori_achievements_filter: all
-    plugin_shikimori_display_achievements: chips
+    plugin_shikimori_sections: achievements, stats
+    plugin_shikimori_achievements_limit: 16
     use_mocked_data: 'yes'
     verify: 'yes'
